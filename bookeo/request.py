@@ -55,5 +55,4 @@ class BookeoRequest:
         if r.status_code not in self.success_codes:
             raise BookeoRequestException(r.reason, self.path)
 
-        # TODO: Handle and return JSON body
-        data = r.json()
+        return r.json()
