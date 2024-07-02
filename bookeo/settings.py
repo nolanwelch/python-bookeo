@@ -12,8 +12,11 @@ from .schemas import (
     BookeoOnOffField,
     BookeoPagination,
     BookeoPeopleCategory,
+    BookeoPhoneNumber,
+    BookeoPhoneType,
     BookeoProduct,
     BookeoProductType,
+    BookeoStreetAddress,
     BookeoTextField,
 )
 
@@ -38,16 +41,26 @@ class BookeoSettings(BookeoAPI):
         if not use_cached or self._business_info is None:
             resp = self.client.request("/settings/business")
             data = resp.json()
-            # TODO: Handle Image class from Bookeo (see: logo). Create new class?
+            if not isinstance(data, dict):
+                return None
+            phone_numbers = []
+            for number in data["phoneNumbers"]:
+                phone_numbers.append(
+                    BookeoPhoneNumber(
+                        number["number"], BookeoPhoneType.from_str(number["type"])
+                    )
+                )
+            logo = data.get("logo")
+            logo_url = logo["url"] if logo is not None else None
             self._business_info = BookeoBusinessInfo(
                 data["id"],
                 data["name"],
                 data.get("legalIdentifiers"),
-                data["phoneNumbers"],
+                phone_numbers,
                 data.get("websiteURL"),
                 data.get("emailAddress"),
-                data["streetAddress"],
-                data.get("logo"),
+                BookeoStreetAddress.from_dict(data["streetAddress"]),
+                logo_url,
                 data.get("description"),
             )
         return self._business_info

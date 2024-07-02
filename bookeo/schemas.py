@@ -14,8 +14,94 @@ class BookeoAPIKeyInfo:
         self.creationTime = dt_from_bookeo_str(creationTime)
 
 
+class BookeoPhoneType(Enum):
+    Mobile = "mobile"
+    Work = "work"
+    Home = "home"
+    Fax = "fax"
+
+    @staticmethod
+    def from_str(label: str):
+        for type in BookeoPhoneType:
+            if type.value == label:
+                return type
+        return None
+
+
+class BookeoPhoneNumber:
+    def __init__(self, number: str, type: BookeoPhoneType):
+        self.number = number
+        self.type = type
+
+    def __repr__(self) -> str:
+        return f"BookeoPhoneNumber({self.number} : {self.type})"
+
+    @staticmethod
+    def from_dict(data: dict):
+        if not isinstance(data, dict):
+            return None
+        return BookeoPhoneNumber(
+            data.get("number"), BookeoPhoneType.from_str(data.get("type"))
+        )
+
+
+class BookeoStreetAddress:
+    def __init__(
+        self,
+        address_1: Optional[str],
+        address_2: Optional[str],
+        city: Optional[str],
+        country_code: Optional[str],
+        state: Optional[str],
+        post_code: Optional[str],
+    ):
+        self.address_1 = address_1
+        self.address_2 = address_2
+        self.city = city
+        self.country_code = country_code
+        self.state = state
+        self.post_code = post_code
+
+    @staticmethod
+    def from_dict(data: dict):
+        if not isinstance(data, dict):
+            return None
+        return BookeoStreetAddress(
+            data.get("address1"),
+            data.get("address2"),
+            data.get("city"),
+            data.get("countryCode"),
+            data.get("state"),
+            data.get("postcode"),
+        )
+
+
 class BookeoBusinessInfo:
-    pass
+
+    def __init__(
+        self,
+        id: str,
+        name: str,
+        legal_identifiers: Optional[str],
+        phone_numbers: list[BookeoPhoneNumber],
+        website_url: Optional[str],
+        email: Optional[str],
+        street_address: BookeoStreetAddress,
+        logo_url: Optional[str],
+        description: Optional[str],
+    ):
+        self.id = id
+        self.name = name
+        self.legal_identifiers = legal_identifiers
+        self.phone_numbers = phone_numbers
+        self.website_url = website_url
+        self.email = email
+        self.street_address = street_address
+        self.logo_url = logo_url
+        self.description = description
+
+    def __repr__(self) -> str:
+        return f"BookeoBusinessInfo({self.id}, {self.name})"
 
 
 class BookeoBooking:
