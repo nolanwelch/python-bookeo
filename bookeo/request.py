@@ -30,9 +30,7 @@ class BookeoRequest:
         method: str = "GET",
     ):
         self.params = params
-        self.params.update(
-            client.query_dict()
-        )
+        self.params.update(client.query_dict())
         self.data = data
         if self.data is str:
             self.data = json.loads(self.data)
