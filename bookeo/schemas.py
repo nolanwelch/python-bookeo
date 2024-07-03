@@ -421,11 +421,14 @@ class BookeoPagination:
 
     @staticmethod
     def from_dict(info: dict):
+        page_nav = info.get("pageNavigationToken")
+        if page_nav is None:
+            return None
         return BookeoPagination(
             info["totalItems"],
             info["totalPages"],
             info["currentPage"],
-            info.get("pageNavigationToken"),
+            page_nav,
         )
 
 
