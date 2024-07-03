@@ -335,7 +335,26 @@ class BookeoPeopleCategory:
 
 
 class BookeoPagination:
-    pass
+    def __init__(
+        self,
+        total_items: int,
+        total_pages: int,
+        current_page: int,
+        nav_token: Optional[str],
+    ):
+        self.total_items = total_items
+        self.total_pages = total_pages
+        self.current_page = current_page
+        self.nav_token = nav_token
+
+    @staticmethod
+    def from_dict(info: dict):
+        return BookeoPagination(
+            info["totalItems"],
+            info["totalPages"],
+            info["currentPage"],
+            info.get("pageNavigationToken"),
+        )
 
 
 class BookeoSubaccount:
