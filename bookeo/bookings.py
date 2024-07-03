@@ -19,7 +19,6 @@ from .schemas import (
 
 
 class BookeoBookings(BookeoAPI):
-
     def create_booking(
         self,
         productId: str,

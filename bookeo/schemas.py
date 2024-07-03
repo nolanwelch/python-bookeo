@@ -77,7 +77,6 @@ class BookeoStreetAddress:
 
 
 class BookeoBusinessInfo:
-
     def __init__(
         self,
         id: str,

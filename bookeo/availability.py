@@ -12,7 +12,6 @@ from .schemas import BookeoProduct
 
 
 class BookeoAvailability(BookeoAPI):
-
     def _product_availability_info(
         productId: str,
         startTime: datetime,

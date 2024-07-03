@@ -21,10 +21,14 @@ from .schemas import (
 )
 
 # TODO: Add descriptions for all class methods
+# TODO: Raise errors on methods where JSON output is guaranteed on success
+
+
+class BookeoSettingsException(BookeoRequestException):
+    pass
 
 
 class BookeoSettings(BookeoAPI):
-
     def api_key_info(self, use_cached=True) -> BookeoAPIKeyInfo:
         if not use_cached or self._api_key_info is None:
             resp = self._request("/settings/apikeyinfo")

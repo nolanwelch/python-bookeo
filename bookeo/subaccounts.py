@@ -15,7 +15,6 @@ class BookeoSubaccountException(BookeoRequestException):
 
 
 class BookeoSubaccounts(BookeoAPI):
-
     # TODO: Write this method
     def get_subaccounts(self) -> list[BookeoSubaccount]:
         """Returns a list of all subaccounts in the portal."""
