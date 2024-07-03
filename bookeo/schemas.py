@@ -127,12 +127,84 @@ class Duration:
     pass
 
 
-class Money:
-    pass
+class BookeoMoney:
+    def __init__(self, amount: str, currency: str):
+        self.amount = amount
+        self.currency = currency
+
+    @staticmethod
+    def from_dict(data: dict):
+        return BookeoMoney(data["amount"], data["currency"])
 
 
-class Payment:
-    pass
+class BookeoPaymentMethod(Enum):
+    CreditCard = "creditCard"
+    Paypal = "paypal"
+    BankTransfer = "bankTransfer"
+    Cash = "cash"
+    Check = "checque"
+    DebitCard = "debitCard"
+    ExistingCredit = "existingCredit"
+    AccountCredit = "accountCredit"
+    MoneyVoucher = "moneyVoucher"
+    Other = "other"
+
+    @staticmethod
+    def from_str(label: str):
+        for method in BookeoPaymentMethod:
+            if method.value == label:
+                return method
+        return None
+
+
+class BookeoPayment:
+    def __init__(
+        self,
+        id: str,
+        creation_time: datetime,
+        received_time: datetime,
+        reason: str,
+        description: Optional[str],
+        comment: Optional[str],
+        amount: BookeoMoney,
+        payment_method: BookeoPaymentMethod,
+        payment_method_other: Optional[str],
+        agent: Optional[str],
+        customer_id: Optional[str],
+        gateway_name: Optional[str],
+        transaction_id: Optional[str],
+    ):
+        self.id = id
+        self.creation_time = creation_time
+        self.received_time = received_time
+        self.reason = reason
+        self.description = description
+        self.comment = comment
+        self.amount = amount
+        self.payment_method = payment_method
+        self.payment_method_other = payment_method_other
+        self.agent = agent
+        self.customer_id = customer_id
+        self.gateway_name = gateway_name
+        self.transaction_id = transaction_id
+
+    @staticmethod
+    def from_dict(data: dict):
+        return BookeoPayment(
+            data["id"],
+            dt_from_bookeo_str(data["creationTime"]),
+            dt_from_bookeo_str(data["receivedTime"]),
+            data["reason"],
+            data.get("description"),
+            data.get("comment"),
+            BookeoMoney.from_dict(data["money"]),
+            BookeoPaymentMethod.from_str(data["paymentMethod"]),
+            data.get("paymentMethodOther"),
+            data.get("agent"),
+            data.get("customerId"),
+            data.get("gatewayName"),
+            data.get("transactionId"),
+        )
 
 
 class PriceAdjustment:
