@@ -12,8 +12,6 @@ from .schemas import BookeoProduct
 
 
 class BookeoAvailability(BookeoAPI):
-    def __init__(self, client: BookeoClient):
-        super.__init__(client)
 
     def _product_availability_info(
         productId: str,

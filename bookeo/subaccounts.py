@@ -15,8 +15,6 @@ class BookeoSubaccountException(BookeoRequestException):
 
 
 class BookeoSubaccounts(BookeoAPI):
-    def __init__(self, client: BookeoClient):
-        super.__init__(client)
 
     # TODO: Write this method
     def get_subaccounts(self) -> list[BookeoSubaccount]:

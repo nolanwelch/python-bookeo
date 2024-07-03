@@ -1,8 +1,10 @@
 from datetime import datetime
 from typing import Optional
 
-from .client import BookeoClient
+import requests
 
+from .client import BookeoClient
+from .request import BookeoRequest
 
 # TODO: Decide how to handle pagination
 # Idea: something like below
@@ -35,6 +37,10 @@ from .client import BookeoClient
 class BookeoAPI:
     def __init__(self, client: BookeoClient):
         self.client = client
+
+    def _request(self, *args, **kwargs) -> requests.Response:
+        r = BookeoRequest(self.client, *args, **kwargs)
+        return r.request()
 
 
 # TODO: Implement this method

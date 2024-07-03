@@ -57,7 +57,3 @@ class BookeoClient:
             "Accept-Encoding": "gzip, deflate, br",
             "Connection": "keep-alive",
         }
-
-    def request(self, *args, **kwargs) -> requests.Response:
-        r = BookeoRequest(self, *args, **kwargs)
-        return r.request()

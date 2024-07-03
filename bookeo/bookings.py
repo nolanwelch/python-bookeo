@@ -19,8 +19,6 @@ from .schemas import (
 
 
 class BookeoBookings(BookeoAPI):
-    def __init__(self, client: BookeoClient):
-        super().__init__(client)
 
     def create_booking(
         self,

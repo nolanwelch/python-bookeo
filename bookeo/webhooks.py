@@ -15,8 +15,6 @@ class BookeoWebhookException(BookeoRequestException):
 
 
 class BookeoWebhooks(BookeoAPI):
-    def __init__(self, client: BookeoClient):
-        super().__init__(client)
 
     def get_webhooks(self) -> list[BookeoWebhook]:
         """Retrieves and returns all webhooks for this API key."""

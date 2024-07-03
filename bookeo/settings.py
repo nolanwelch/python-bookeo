@@ -24,13 +24,10 @@ from .schemas import (
 
 
 class BookeoSettings(BookeoAPI):
-    def __init__(self, client: BookeoClient):
-        super().__init__(client)
 
     def api_key_info(self, use_cached=True) -> BookeoAPIKeyInfo:
         if not use_cached or self._api_key_info is None:
-            resp = self.client.request(self.client, "/settings/apikeyinfo")
-
+            resp = self._request("/settings/apikeyinfo")
             data = resp.json()
             self._api_key_info = BookeoAPIKeyInfo(
                 data["accountId"], data["permissions"], data["creationTime"]
@@ -39,7 +36,7 @@ class BookeoSettings(BookeoAPI):
 
     def business_info(self, use_cached=True) -> BookeoBusinessInfo:
         if not use_cached or self._business_info is None:
-            resp = self.client.request("/settings/business")
+            resp = self._request("/settings/business")
             data = resp.json()
             if not isinstance(data, dict):
                 return None
@@ -66,7 +63,7 @@ class BookeoSettings(BookeoAPI):
         return self._business_info
 
     def _fetch_customer_participant_info(self):
-        resp = self.client.request(self.client, "/settings/customercustomfields")
+        resp = self._request("/settings/customercustomfields")
         fields = resp.json()
         if not isinstance(fields, dict):
             return
@@ -189,7 +186,7 @@ class BookeoSettings(BookeoAPI):
 
     def get_langs(self, use_cached=True) -> list[BookeoLanguage]:
         if not use_cached or self._languages is None:
-            resp = self.client.request(self.client, "/settings/languages")
+            resp = self._request("/settings/languages")
             data = resp.json()
             try:
                 if not isinstance(data, list) and isinstance(data[0], dict):
@@ -206,7 +203,7 @@ class BookeoSettings(BookeoAPI):
 
     def get_people_categories(self, use_cached=True) -> list[BookeoPeopleCategory]:
         if not use_cached or self._people_categories is None:
-            resp = self.client.request(self.client, "/settings/peoplecategories")
+            resp = self._request("/settings/peoplecategories")
             data = resp.json()
             try:
                 if not isinstance(data, list) and isinstance(data[0], dict):
@@ -235,13 +232,13 @@ class BookeoSettings(BookeoAPI):
         if not use_cached or self._products is None:
             if isinstance(type, str):
                 type = BookeoProductType.from_str(type)
-            resp = self.client.request(self.client, "/settings/products", params={})
+            resp = self._request("/settings/products", params={})
             if resp.status_code != 200 or False:
                 pass
         return self._products
 
     def get_resources(self, use_cached=True):
-        resp = self.client.request(self.client, "/settings/resources")
+        resp = self._request("/settings/resources")
 
     def get_taxes(self, use_cached=True):
-        resp = self.client.request(self.client, "/settings/taxes")
+        resp = self._request("/settings/taxes")
