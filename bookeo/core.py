@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
+import pytz
 import requests
 
 from .client import BookeoClient
@@ -43,11 +44,15 @@ class BookeoAPI:
         return r.request()
 
 
-# TODO: Implement this method
-def dt_from_bookeo_str(timestamp: str) -> Optional[datetime]:
-    pass
+def bookeo_timestamp_to_dt(timestamp: str) -> Optional[datetime]:
+    if timestamp is None:
+        return None
+    dt = datetime.strptime(timestamp, r"%Y-%m-%dT%H:%M:%SZ")
+    return pytz.utc.localize(dt)
 
 
-# TODO: Implement this method
-def bookeo_timestamp_from_dt(dt: datetime) -> Optional[str]:
-    pass
+def dt_to_bookeo_timestamp(dt: datetime) -> Optional[str]:
+    if dt is None:
+        return None
+    utc_dt = dt.astimezone(pytz.utc)
+    return datetime.strftime(utc_dt, r"%Y-%m-%dT%H:%M:%SZ")
