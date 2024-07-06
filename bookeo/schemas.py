@@ -649,7 +649,7 @@ class BookeoResourceBlock:
     last_change_agent: Optional[str]
 
     def to_dict(self):
-        return {}
+        raise NotImplementedError
 
     @staticmethod
     def from_dict(data: dict):
