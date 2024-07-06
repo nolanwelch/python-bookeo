@@ -5,8 +5,19 @@ from typing import Optional
 
 from .core import bookeo_timestamp_to_dt, dt_to_bookeo_timestamp
 
+# Bookeo enumerable types
 
-class BookeoPhoneType(Enum):
+
+class BookeoEnum(Enum):
+    @classmethod
+    def from_str(cls, label: str):
+        for sub in cls:
+            if sub.value == label:
+                return sub
+        return None
+
+
+class BookeoPhoneType(BookeoEnum):
     Mobile = "mobile"
     Work = "work"
     Home = "home"
