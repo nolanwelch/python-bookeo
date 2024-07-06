@@ -1,9 +1,13 @@
 from typing import Optional
 
-from .client import BookeoClient
-from .core import BookeoAPI, dt_from_bookeo_str
+from .core import BookeoAPI
 from .request import BookeoRequestException
-from .schemas import BookeoWebhook, BookeoWebhookDomain, BookeoWebhookType
+from .schemas import (
+    BookeoPagination,
+    BookeoWebhook,
+    BookeoWebhookDomain,
+    BookeoWebhookType,
+)
 
 
 class BookeoWebhookException(BookeoRequestException):
@@ -15,47 +19,39 @@ class BookeoWebhookException(BookeoRequestException):
 
 
 class BookeoWebhooks(BookeoAPI):
-    def get_webhooks(self) -> list[BookeoWebhook]:
+    def get_webhooks(self) -> Optional[tuple[str, BookeoWebhook]]:
         """Retrieves and returns all webhooks for this API key."""
-        resp = self.client.request(self.client, "/webhooks")
-        data = resp.json()
-        if data is None:
-            return []
+        resp = self._request("/webhooks")
+        if resp.status_code != 200:
+            return None
+        info = resp["info"]
+        webhooks = [BookeoWebhook.from_dict(payment) for payment in info["data"]]
+        pager = BookeoPagination.from_dict(info)
+        return (webhooks, pager)
 
-        # TODO: implement get_webhooks()
-        webhooks = []
+    def create_webhook(
+        self, url: str, domain: BookeoWebhookDomain, webhook_type: BookeoWebhookType
+    ) -> Optional[str]:
+        """Creates a new webhook, returning the resource URI if successful."""
+        resp = self._request(
+            "/webhooks",
+            data={
+                "url": url,
+                "domain": domain,
+                "type": webhook_type,
+            },
+            method="POST",
+        )
+        return resp.headers.get("Location")
 
     def get_webhook(self, id: str) -> Optional[BookeoWebhook]:
         """Retrieves the webhook with the specified id. Returns a BookeoWebhook if successful."""
-        if id is None:
-            raise BookeoWebhookException("id cannot be None")
-
-        resp = self.client.request(self.client, "/webhooks", params={"webhookId": id})
-        data = resp.json()
-        if not isinstance(data, dict):
+        resp = self._request(f"/webhooks{id}")
+        if resp.status_code != 200:
             return None
-
-        return BookeoWebhook(
-            data.get("id"),
-            data.get("url"),
-            BookeoWebhookDomain.from_str(data.get("domain")),
-            BookeoWebhookType.from_str(data.get("type")),
-            dt_from_bookeo_str(data.get("blockedTime")),
-            data.get("blockedReason"),
-        )
-
-    def create_webhook(
-        self, url: str, domain: BookeoWebhookDomain, type: BookeoWebhookType
-    ) -> Optional[str]:
-        """Creates a new webhook. Returns the resource URI if successful."""
-        data = {"url": url, "domain": domain, "type": type}
-        resp = self.client.request(self.client, "/webhooks", data=data, method="POST")
-        headers = resp.headers
-        return headers.get("Location")
+        return BookeoWebhook.from_dict(resp.json())
 
     def delete_webhook(self, id) -> bool:
-        """Deletes the webhook with the specified id. Returns True iff successful."""
-        resp = self.client.request(
-            self.client, "/webhooks", params={"id": id}, method="DELETE"
-        )
+        """Deletes the webhook with the specified id, returning True if successful."""
+        resp = self._request(f"/webhooks/{id}", method="DELETE")
         return resp.status_code == 204

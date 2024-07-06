@@ -312,7 +312,26 @@ class TelephoneNumber:
 
 @dataclass
 class BookeoWebhook:
-    pass
+    id: str
+    url: str
+    domain: BookeoWebhookDomain
+    webhook_type: BookeoWebhookType
+    blocked_time: Optional[datetime]
+    blocked_reason: Optional[str]
+
+    def to_dict(self):
+        raise NotImplementedError
+
+    @staticmethod
+    def from_dict(data: dict):
+        return BookeoWebhook(
+            data["id"],
+            data["url"],
+            BookeoWebhookDomain.from_str(data["domain"]),
+            BookeoWebhookType.from_str(data["type"]),
+            bookeo_timestamp_to_dt(data.get("blockedTime")),
+            data.get("blockedReason"),
+        )
 
 
 @dataclass
