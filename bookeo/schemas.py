@@ -634,3 +634,33 @@ class BookeoParticipants:
             "numbers": [pn.to_dict() for pn in self.numbers],
             "details": [p.to_dict() for p in self.participants],
         }
+
+
+@dataclass
+class BookeoResourceBlock:
+    id: str
+    start_time: datetime
+    end_time: datetime
+    reason: Optional[str]
+    resources: list[BookeoResource]
+    creation_time: datetime
+    creation_agent: str
+    last_change_time: Optional[datetime]
+    last_change_agent: Optional[str]
+
+    def to_dict(self):
+        return {}
+
+    @staticmethod
+    def from_dict(data: dict):
+        return BookeoResourceBlock(
+            data["id"],
+            bookeo_timestamp_to_dt(data["startTime"]),
+            bookeo_timestamp_to_dt(data["endTime"]),
+            data.get("reason"),
+            [BookeoResource.from_dict(r) for r in data["resources"]],
+            bookeo_timestamp_to_dt(data["creationTime"]),
+            data["creationAgent"],
+            bookeo_timestamp_to_dt(data.get("lastChangeTime")),
+            data.get("lastChangeAgent"),
+        )
