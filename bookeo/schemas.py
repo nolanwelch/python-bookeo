@@ -664,3 +664,35 @@ class BookeoResourceBlock:
             bookeo_timestamp_to_dt(data.get("lastChangeTime")),
             data.get("lastChangeAgent"),
         )
+
+
+@dataclass
+class BookeoSeatBlock:
+    id: str
+    event_id: str
+    product_id: str
+    reason: Optional[str]
+    num_seats: int
+    start_time: Optional[datetime]
+    creation_time: datetime
+    creation_agent: str
+    last_change_time: Optional[datetime]
+    last_change_agent: Optional[str]
+
+    def to_dict(self):
+        raise NotImplementedError
+
+    @staticmethod
+    def from_dict(data: dict):
+        return BookeoSeatBlock(
+            data["id"],
+            data["eventId"],
+            data["productId"],
+            data.get("reason"),
+            data["numSeats"],
+            bookeo_timestamp_to_dt(data.get("startTime")),
+            bookeo_timestamp_to_dt(data["creationTime"]),
+            data["creationAgent"],
+            bookeo_timestamp_to_dt(data.get("lastChangeTime")),
+            data.get("lastChangeAgent"),
+        )
