@@ -1,7 +1,7 @@
 from typing import Optional
 
 from .core import BookeoAPI
-from .request import BookeoRequestException, BookeoRequestPager
+from .request import BookeoRequestException
 from .schemas import BookeoPagination, BookeoSubaccount
 
 
@@ -19,7 +19,7 @@ class BookeoSubaccounts(BookeoAPI):
         nav_token: Optional[str],
         page_number: Optional[int],
         items_per_page: Optional[int],
-    ) -> Optional[tuple[list[BookeoSubaccount], BookeoRequestPager]]:
+    ) -> Optional[tuple[list[BookeoSubaccount], BookeoPagination]]:
         """Returns a list of all subaccounts in the portal."""
         resp = self._request(
             "/subaccounts",
