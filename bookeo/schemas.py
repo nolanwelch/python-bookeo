@@ -869,6 +869,63 @@ class BookeoResource:
 
 
 @dataclass
+class BookeoCourseEvent:
+    event_number: int
+    event_id: str
+    start_time: datetime
+    end_time: datetime
+
+    @staticmethod
+    def from_dict(data: dict):
+        if data is None:
+            return None
+        return BookeoCourseEvent(
+            data["eventNumber"],
+            data["eventId"],
+            bookeo_timestamp_to_dt(data["startTime"]),
+            bookeo_timestamp_to_dt(data["endTime"]),
+        )
+
+
+@dataclass
+class BookeoCourseSchedule:
+    events: list[BookeoCourseEvent]
+    title: str
+
+    @staticmethod
+    def from_dict(data: dict):
+        if data is None:
+            return None
+        return BookeoCourseSchedule(
+            [BookeoCourseEvent.from_dict(e) for e in data["events"]],
+            data["title"],
+        )
+
+
+@dataclass
+class BookeoMatchingSlot:
+    start_time: datetime
+    end_time: datetime
+    price: Optional[BookeoMoney]
+    course_schedule: Optional[BookeoCourseSchedule]
+    event_id: str
+    resources: Optional[list[BookeoResource]]
+
+    @staticmethod
+    def from_dict(data: dict):
+        if data is None:
+            return None
+        return BookeoMatchingSlot(
+            bookeo_timestamp_to_dt(data["startTime"]),
+            bookeo_timestamp_to_dt(data["endTime"]),
+            BookeoMoney.from_dict(data.get("price")),
+            BookeoCourseSchedule.from_dict(data.get("courseSchedule")),
+            data["eventId"],
+            [BookeoResource.from_dict(r) for r in data.get("resources", [])],
+        )
+
+
+@dataclass
 class BookeoHold:
     id: str
     price: BookeoPrice
