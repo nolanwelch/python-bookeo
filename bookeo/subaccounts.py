@@ -1,9 +1,8 @@
 from typing import Optional
 
-from .client import BookeoClient
 from .core import BookeoAPI
-from .request import BookeoRequestException
-from .schemas import BookeoSubaccount
+from .request import BookeoRequestException, BookeoRequestPager
+from .schemas import BookeoPagination, BookeoSubaccount
 
 
 class BookeoSubaccountException(BookeoRequestException):
@@ -15,22 +14,40 @@ class BookeoSubaccountException(BookeoRequestException):
 
 
 class BookeoSubaccounts(BookeoAPI):
-    # TODO: Write this method
-    def get_subaccounts(self) -> list[BookeoSubaccount]:
+    def get_subaccounts(
+        self,
+        nav_token: Optional[str],
+        page_number: Optional[int],
+        items_per_page: Optional[int],
+    ) -> Optional[tuple[list[BookeoSubaccount], BookeoRequestPager]]:
         """Returns a list of all subaccounts in the portal."""
-        resp = self.client.request("/subaccounts")
+        resp = self._request(
+            "/subaccounts",
+            params={
+                "itemsPerPage": items_per_page,
+                "pageNavigationToken": nav_token,
+                "pageNumber": page_number,
+            },
+        )
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+        accounts = [BookeoSubaccount.from_dict(a) for a in data["data"]]
+        pager = BookeoPagination.from_dict(data["info"])
+        return (accounts, pager)
 
-    def create_new_subaccount_key(self, subaccountId: str) -> Optional[str]:
+    def create_new_subaccount_key(self, id: str) -> Optional[str]:
         """Creates a new API Key for this application to access a subaccount."""
-        resp = self.client.request(
-            f"/subaccounts/{subaccountId}/apikeys", method="POST"
+        resp = self._request(
+            f"/subaccounts/{id}/apikeys",
+            method="POST",
         )
         return resp.headers.get("Location")
 
-    def delete_subaccount_key(self, subaccountId: str, apiKey: str) -> bool:
-        """Uninstalls this application from a subaccount.
-        Returns True if successful, otherwise False."""
-        resp = self.client.request(
-            f"/subaccounts/{subaccountId}/apikeys/{apiKey}", method="DELETE"
+    def delete_subaccount_key(self, account_id: str, api_key: str) -> bool:
+        """Uninstalls this application from a subaccount, returning True if successful."""
+        resp = self._request(
+            f"/subaccounts/{account_id}/apikeys/{api_key}",
+            method="DELETE",
         )
         return resp.status_code == 204

@@ -821,7 +821,17 @@ class BookeoPagination:
 
 @dataclass
 class BookeoSubaccount:
-    pass
+    id: str
+    name: str
+
+    @staticmethod
+    def from_dict(data: dict):
+        if data is None:
+            return None
+        return BookeoSubaccount(
+            data["id"],
+            data["name"],
+        )
 
 
 @dataclass
