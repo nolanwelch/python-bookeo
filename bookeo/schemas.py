@@ -66,6 +66,15 @@ class BookeoWebhookType(BookeoEnum):
 # Object schemas
 
 
+class BookeoField:
+    """Defines a wrapper around a Bookeo field. Takes two parameters:
+    the underlying type and the field's canonical name in the API."""
+
+    def __init__(self, btype: type, cname: str):
+        self.btype = btype
+        self.cname = cname
+
+
 class BookeoSchema:
     # TODO: Implement this https://stackoverflow.com/a/49003922
     def to_dict(self):
@@ -84,13 +93,32 @@ class BookeoAPIKeyInfo:
     permissions: list[str]
     creation_time: datetime
 
-    @staticmethod
-    # TODO: Implement BookeoAPIKeyInfo.from_dict()
-    def from_dict(data: dict):
+    def to_dict(self):
         raise NotImplementedError
+
+    @staticmethod
+    def from_dict(data: dict):
         if data is None:
             return None
-        pass
+        return BookeoAPIKeyInfo(
+            data["accountId"],
+            data["permissions"],
+            bookeo_timestamp_to_dt(data["creationTime"]),
+        )
+
+
+@dataclass
+class BookeoImage:
+    url: str
+
+    def to_dict(self):
+        return {"url": self.url}
+
+    @staticmethod
+    def from_dict(data: dict):
+        if data is None:
+            return None
+        return BookeoImage(data["url"])
 
 
 @dataclass
@@ -145,11 +173,30 @@ class BookeoBusinessInfo:
     website_url: Optional[str]
     email: Optional[str]
     street_address: BookeoStreetAddress
-    logo_url: Optional[str]
+    logo: Optional[BookeoImage]
     description: Optional[str]
 
     def __repr__(self) -> str:
         return f"BookeoBusinessInfo({self.id}, {self.name})"
+
+    def to_dict(self):
+        raise NotImplementedError
+
+    @staticmethod
+    def from_dict(data: dict):
+        if data is None:
+            return None
+        return BookeoBusinessInfo(
+            data["id"],
+            data["name"],
+            data.get("legalIdentifiers"),
+            [BookeoPhoneNumber.from_dict(num) for num in data["phoneNumbers"]],
+            data.get("websiteURL"),
+            data.get("emailAddress"),
+            BookeoStreetAddress.from_dict(data["streetAddress"]),
+            BookeoImage.from_dict(data.get("logo")),
+            data.get("description"),
+        )
 
 
 @dataclass
@@ -177,13 +224,331 @@ class BookeoBookingOption:
 
 
 @dataclass
-class BookingLimit:
-    pass
+class BookeoCustomChoiceValue:
+    id: str
+    name: str
+    description: str
+
+    def to_dict(self):
+        raise NotImplementedError
+
+    @staticmethod
+    def from_dict(data: dict):
+        if data is None:
+            return None
+        return BookeoCustomChoiceValue(
+            data["id"],
+            data["name"],
+            data["description"],
+        )
 
 
 @dataclass
-class Duration:
-    pass
+class BookeoCustomField:
+    id: str
+    name: str
+    description: Optional[str]
+    shown_to_customers: bool
+    for_customer: bool
+    for_participants: bool
+    index: int
+
+
+@dataclass
+class BookeoChoiceField(BookeoCustomField):
+    id: str
+    name: str
+    description: Optional[str]
+    shownToCustomers: bool
+    forCustomer: bool
+    forParticipants: bool
+    index: int
+    values: list[BookeoCustomChoiceValue]
+    defaultValueId: Optional[str]
+
+    def to_dict(self):
+        raise NotImplementedError
+
+    @staticmethod
+    def from_dict(data: dict):
+        if data is None:
+            return None
+        return BookeoChoiceField(
+            data["id"],
+            data["name"],
+            data.get("description"),
+            data["shownToCustomers"],
+            data["forCustomer"],
+            data["forParticipants"],
+            data["index"],
+            [BookeoCustomChoiceValue.from_dict(v) for v in data["values"]],
+            data.get("defaultValueId"),
+        )
+
+
+@dataclass
+class BookeoChoiceOptionValue:
+    id: str
+    name: str
+    description: str
+
+    def to_dict(self):
+        raise NotImplementedError
+
+    @staticmethod
+    def from_dict(data: dict):
+        if data is None:
+            return None
+        return BookeoChoiceOptionValue(
+            data["id"],
+            data["name"],
+            data["description"],
+        )
+
+
+@dataclass
+class BookeoChoiceOption:
+    id: str
+    name: str
+    index: int
+    description: Optional[str]
+    shown_to_customers: bool
+    enabled: bool
+    values: list[BookeoChoiceOptionValue]
+    default_value_id: Optional[str]
+
+    def to_dict(self):
+        raise NotImplementedError
+
+    @staticmethod
+    def from_dict(data: dict):
+        if data is None:
+            return None
+        return BookeoChoiceOption(
+            data["id"],
+            data["name"],
+            data["index"],
+            data.get("description"),
+            data["shownToCustomers"],
+            data["enabled"],
+            [BookeoChoiceOptionValue.from_dict(v) for v in data["values"]],
+            data.get("defaultValueId"),
+        )
+
+
+@dataclass
+class BookeoNumberField(BookeoCustomField):
+    id: str
+    name: str
+    description: Optional[str]
+    shown_to_customers: bool
+    for_customer: bool
+    for_participants: bool
+    index: int
+    min_value: int
+    max_value: int
+    default_value: int
+
+    def to_dict(self):
+        raise NotImplementedError
+
+    @staticmethod
+    def from_dict(data: dict):
+        return BookeoNumberField(
+            data["id"],
+            data["name"],
+            data.get("description"),
+            data["shownToCustomers"],
+            data["forCustomer"],
+            data["forParticipants"],
+            data["index"],
+            data["minValue"],
+            data["maxValue"],
+            data["defaultValue"],
+        )
+
+
+@dataclass
+class BookeoNumberOption:
+    id: str
+    name: str
+    index: int
+    description: Optional[str]
+    shown_to_customers: bool
+    enabled: bool
+    min_value: int
+    max_value: int
+    default_value: int
+
+    def to_dict(self):
+        raise NotImplementedError
+
+    @staticmethod
+    def from_dict(data: dict):
+        if data is None:
+            return None
+        return BookeoNumberOption(
+            data["id"],
+            data["name"],
+            data["index"],
+            data.get("description"),
+            data["shownToCustomers"],
+            data["enabled"],
+            data["minValue"],
+            data["maxValue"],
+            data["defaultValue"],
+        )
+
+
+@dataclass
+class BookeoOnOffField(BookeoCustomField):
+    id: str
+    name: str
+    description: Optional[str]
+    shown_to_customers: bool
+    for_customer: bool
+    for_participants: bool
+    index: int
+    default_state: bool
+
+    def to_dict(self):
+        raise NotImplementedError
+
+    @staticmethod
+    def from_dict(data: dict):
+        if data is None:
+            return None
+        return BookeoOnOffField(
+            data["id"],
+            data["name"],
+            data.get("description"),
+            data["shownToCustomers"],
+            data["forCustomer"],
+            data["forParticipants"],
+            data["index"],
+            data["defaultState"],
+        )
+
+
+@dataclass
+class BookeoOnOffOption:
+    id: str
+    name: str
+    index: int
+    description: Optional[str]
+    shown_to_customers: bool
+    enabled: bool
+    default: bool
+
+    @staticmethod
+    def from_dict(data: dict):
+        if data is None:
+            return None
+        return BookeoOnOffOption(
+            data["id"],
+            data["name"],
+            data["index"],
+            data.get("description"),
+            data["shownToCustomers"],
+            data["enabled"],
+            data["defaultState"],
+        )
+
+
+@dataclass
+class BookeoTextField:
+    id: str
+    name: str
+    description: Optional[str]
+    shown_to_customers: bool
+    for_customer: bool
+    for_participants: bool
+    index: int
+
+    def to_dict(self):
+        raise NotImplementedError
+
+    @staticmethod
+    def from_dict(data: dict):
+        if data is None:
+            return None
+        return BookeoTextField(
+            data["id"],
+            data["name"],
+            data.get("description"),
+            data["shownToCustomers"],
+            data["forCustomer"],
+            data["forParticipants"],
+            data["index"],
+        )
+
+
+@dataclass
+class BookeoTextOption:
+    id: str
+    name: str
+    index: int
+    description: Optional[str]
+    shown_to_customers: bool
+    enabled: bool
+    required: bool
+
+    def to_dict(self):
+        raise NotImplementedError
+
+    @staticmethod
+    def from_dict(data: dict):
+        if data is None:
+            return None
+        return BookeoTextOption(
+            data["id"],
+            data["name"],
+            data["index"],
+            data.get("description"),
+            data["shownToCustomers"],
+            data["enabled"],
+            data["required"],
+        )
+
+
+@dataclass
+class BookeoBookingLimit:
+    people_category_id: Optional[str]
+    min: int
+    max: int
+
+    def to_dict(self):
+        raise NotImplementedError
+
+    @staticmethod
+    def from_dict(data: dict):
+        if data is None:
+            return None
+        return BookeoBookingLimit(
+            data.get("peopleCategoryId"),
+            data["min"],
+            data["max"],
+        )
+
+
+@dataclass
+class BookeoDuration:
+    days: int
+    hours: int
+    minutes: int
+
+    def to_dict(self):
+        raise NotImplementedError
+
+    @staticmethod
+    def from_dict(data: dict):
+        if data is None:
+            return None
+        return BookeoDuration(
+            data["days"],
+            data["hours"],
+            data["minutes"],
+        )
 
 
 @dataclass
@@ -270,25 +635,23 @@ class BookeoPriceAdjustment:
 
 
 @dataclass
-class BookeoProduct:
-    name: str
-    product_id: str
-    product_code: str
-    booking_limits: list[BookingLimit]
-    duration: Duration
-    product_type: BookeoProductType
-    members_only: bool
-    prepaid_only: bool
-    accept_deny: bool
-    api_bookings_allowed: bool
-    dropin_only: bool
-
-
-@dataclass
 class BookeoTax:
     id: str
     name: str
     enabled: bool
+
+    def to_dict(self):
+        raise NotImplementedError
+
+    @staticmethod
+    def from_dict(data: dict):
+        if data is None:
+            return None
+        return BookeoTax[
+            data["id"],
+            data["name"],
+            data["enabled"],
+        ]
 
 
 @dataclass
@@ -301,6 +664,76 @@ class BookeoPriceTax:
         if data is None:
             return None
         return BookeoPriceTax(data["taxId"], data["amount"])
+
+
+@dataclass
+class BookeoPriceRate:
+    people_category_id: Optional[str]
+    price: Optional[BookeoMoney]
+
+    def to_dict(self):
+        raise NotImplementedError
+
+    @staticmethod
+    def from_dict(data: dict):
+        if data is None:
+            return None
+        return BookeoPriceRate(
+            data.get("peopleCategoryId"),
+            BookeoMoney.from_dict(data.get("price")),
+        )
+
+
+@dataclass
+class BookeoProduct:
+    name: str
+    description: Optional[str]
+    images: Optional[list[BookeoImage]]
+    product_id: str
+    product_code: str
+    booking_limits: list[BookeoBookingLimit]
+    default_rates: Optional[list[BookeoPriceRate]]
+    duration: BookeoDuration
+    product_type: BookeoProductType
+    members_only: bool
+    prepaid_only: bool
+    accept_deny: bool
+    api_bookings_allowed: bool
+    dropin_only: bool
+    allow_private_events: Optional[bool]
+    choice_options: list[BookeoChoiceOption]
+    number_options: list[BookeoNumberOption]
+    on_off_options: list[BookeoOnOffOption]
+    text_options: list[BookeoTextOption]
+
+    def to_dict(self):
+        raise NotImplementedError
+
+    @staticmethod
+    def from_dict(data: dict):
+        if data is None:
+            return None
+        return BookeoProduct(
+            data["name"],
+            data.get("description"),
+            [BookeoImage.from_dict(i) for i in data.get("images", [])],
+            data["productId"],
+            data["productCode"],
+            [BookeoBookingLimit.from_dict(b) for b in data["bookingLimits"]],
+            [BookeoPriceRate.from_dict(r) for r in data.get("defaultRates", [])],
+            BookeoDuration.from_dict(data["duration"]),
+            BookeoProductType.from_str(data["type"]),
+            data["membersOnly"],
+            data["prepaidOnly"],
+            data["acceptDeny"],
+            data["apiBookingsAllowed"],
+            data["dropInOnly"],
+            data.get("allowPrivateEvents"),  # TODO: Implement below
+            [BookeoChoiceOption.from_dict(c) for c in data.get("choiceOptions", [])],
+            [BookeoNumberOption.from_dict(c) for c in data.get("numberOptions", [])],
+            [BookeoOnOffOption.from_dict(c) for c in data.get("onOffOptions", [])],
+            [BookeoTextOption.from_dict(c) for c in data.get("textOptions", [])],
+        )
 
 
 @dataclass
@@ -340,91 +773,14 @@ class BookeoLanguage:
     name: str
     customers_default: bool
 
+    def to_dict(self):
+        raise NotImplementedError
 
-@dataclass
-class BookeoCustomChoiceValue:
-    id: str
-    name: str
-    description: str
-
-
-@dataclass
-class BookeoCustomField:
-    id: str
-    name: str
-    description: Optional[str]
-    shown_to_customers: bool
-    for_customer: bool
-    for_participants: bool
-    index: int
-
-
-class BookeoChoiceField(BookeoCustomField):
-    def __init__(
-        self,
-        id: str,
-        name: str,
-        description: Optional[str],
-        shownToCustomers: bool,
-        forCustomer: bool,
-        forParticipants: bool,
-        index: int,
-        values: list[BookeoCustomChoiceValue],
-        defaultValueId: Optional[str],
-    ):
-        self.values = values
-        self.defaultValueId = defaultValueId
-        super.__init__(
-            id, name, description, shownToCustomers, forCustomer, forParticipants, index
-        )
-
-
-class BookeoNumberField(BookeoCustomField):
-    # TODO: Write __init__ to handle input
-    def __init__(
-        self,
-        id: str,
-        name: str,
-        description: Optional[str],
-        shownToCustomers: bool,
-        forCustomer: bool,
-        forParticipants: bool,
-        index: int,
-        minValue: int,
-        maxValue: int,
-        defaultValue: int,
-    ):
-        self.minValue = minValue
-        self.maxValue = maxValue
-        self.defaultValue = defaultValue
-        super.__init__(
-            id, name, description, shownToCustomers, forCustomer, forParticipants, index
-        )
-
-
-@dataclass
-class BookeoOnOffField(BookeoCustomField):
-    def __init__(
-        self,
-        id: str,
-        name: str,
-        description: Optional[str],
-        shown_to_customers: bool,
-        for_customer: bool,
-        for_participants: bool,
-        index: int,
-        default_state: bool,
-    ):
-        self.default_state = default_state
-        super.__init__(
-            id,
-            name,
-            description,
-            shown_to_customers,
-            for_customer,
-            for_participants,
-            index,
-        )
+    @staticmethod
+    def from_dict(data: dict):
+        if data is None:
+            return None
+        return BookeoLanguage(data["tag"], data["name"], data["customersDefault"])
 
 
 @dataclass
@@ -432,6 +788,15 @@ class BookeoPeopleCategory:
     name: str
     id: str
     numSeats: int
+
+    def to_dict(self):
+        raise NotImplementedError
+
+    @staticmethod
+    def from_dict(data: dict):
+        if data is None:
+            return None
+        return BookeoPeopleCategory(data["name"], data["id"], data["numSeats"])
 
 
 @dataclass

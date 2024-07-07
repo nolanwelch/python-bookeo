@@ -1,27 +1,22 @@
 from typing import Optional
 
-from .client import BookeoClient
 from .core import BookeoAPI
+from .request import BookeoRequestException
 from .schemas import (
     BookeoAPIKeyInfo,
     BookeoBusinessInfo,
     BookeoChoiceField,
-    BookeoCustomChoiceValue,
     BookeoLanguage,
     BookeoNumberField,
     BookeoOnOffField,
     BookeoPagination,
     BookeoPeopleCategory,
-    BookeoPhoneNumber,
-    BookeoPhoneType,
     BookeoProduct,
     BookeoProductType,
-    BookeoStreetAddress,
+    BookeoResource,
+    BookeoTax,
     BookeoTextField,
 )
-
-# TODO: Add descriptions for all class methods
-# TODO: Raise errors on methods where JSON output is guaranteed on success
 
 
 class BookeoSettingsException(BookeoRequestException):
@@ -29,220 +24,121 @@ class BookeoSettingsException(BookeoRequestException):
 
 
 class BookeoSettings(BookeoAPI):
-    def api_key_info(self, use_cached=True) -> BookeoAPIKeyInfo:
+    def api_key_info(self, use_cached=True) -> Optional[BookeoAPIKeyInfo]:
         if not use_cached or self._api_key_info is None:
             resp = self._request("/settings/apikeyinfo")
-            data = resp.json()
-            self._api_key_info = BookeoAPIKeyInfo(
-                data["accountId"], data["permissions"], data["creationTime"]
-            )
+            if resp.status_code != 200:
+                return None
+            self._api_key_info = BookeoAPIKeyInfo.from_dict(resp.json())
         return self._api_key_info
 
-    def business_info(self, use_cached=True) -> BookeoBusinessInfo:
+    def business_info(self, use_cached=True) -> Optional[BookeoBusinessInfo]:
         if not use_cached or self._business_info is None:
             resp = self._request("/settings/business")
-            data = resp.json()
-            if not isinstance(data, dict):
+            if resp.status_code != 200:
                 return None
-            phone_numbers = []
-            for number in data["phoneNumbers"]:
-                phone_numbers.append(
-                    BookeoPhoneNumber(
-                        number["number"], BookeoPhoneType.from_str(number["type"])
-                    )
-                )
-            logo = data.get("logo")
-            logo_url = logo["url"] if logo is not None else None
-            self._business_info = BookeoBusinessInfo(
-                data["id"],
-                data["name"],
-                data.get("legalIdentifiers"),
-                phone_numbers,
-                data.get("websiteURL"),
-                data.get("emailAddress"),
-                BookeoStreetAddress.from_dict(data["streetAddress"]),
-                logo_url,
-                data.get("description"),
-            )
+            self._business_info = BookeoBusinessInfo.from_dict(resp.json())
         return self._business_info
 
     def _fetch_customer_participant_info(self):
         resp = self._request("/settings/customercustomfields")
-        fields = resp.json()
-        if not isinstance(fields, dict):
-            return
-        self._custom_fields = fields
+        if resp.status_code != 200:
+            self._custom_fields = {}
+        self._custom_fields = resp.json()
 
     def get_choice_fields(self, use_cached=True) -> list[BookeoChoiceField]:
-        if not use_cached or self._custom_fields is None:
+        if not use_cached or self._choice_fields is None:
             self._fetch_customer_participant_info()
-        choice_fields = self._custom_fields.get("choiceFields")
-        try:
-            if not isinstance(choice_fields, list) and isinstance(
-                choice_fields[0], dict
-            ):
+            fields = self._custom_fields.get("choiceFields")
+            if fields is None:
                 return []
-        except IndexError:
-            return []
-
-        custom_fields = []
-        for field in choice_fields:
-            # TODO: Handle field["values"]
-            values = [
-                BookeoCustomChoiceValue(v["id"], v["name"], v["description"])
-                for v in field["values"]
-            ]
-            custom_fields.append(
-                BookeoChoiceField(
-                    field["id"],
-                    field["name"],
-                    field.get("description"),
-                    field["shownToCustomers"],
-                    field["forCustomer"],
-                    field["forParticipants"],
-                    field["index"],
-                    values,
-                    field.get("defaultValueId"),
-                )
-            )
-        return custom_fields
+            self._choice_fields = [BookeoChoiceField.from_dict(f) for f in fields]
+        return self._choice_fields
 
     def get_number_fields(self, use_cached=True) -> list[BookeoNumberField]:
-        if not use_cached or self._custom_fields is None:
+        if not use_cached or self._number_fields is None:
             self._fetch_customer_participant_info()
-        number_fields = self._custom_fields.get("numberFields")
-        try:
-            if not isinstance(number_fields, list) and isinstance(
-                number_fields[0], dict
-            ):
+            fields = self._custom_fields.get("numberFields")
+            if fields is None:
                 return []
-        except IndexError:
-            return []
-
-        custom_fields = []
-        for field in number_fields:
-            custom_fields.append(
-                BookeoNumberField(
-                    field["id"],
-                    field["name"],
-                    field.get("description"),
-                    field["shownToCustomers"],
-                    field["forCustomer"],
-                    field["forParticipants"],
-                    field["index"],
-                    field["minValue"],
-                    field["maxValue"],
-                    field["defaultValue"],
-                )
-            )
-        return custom_fields
+            self._number_fields = [BookeoNumberField.from_dict(f) for f in fields]
+        return self._number_fields
 
     def get_onoff_fields(self, use_cached=True) -> list[BookeoOnOffField]:
-        if not use_cached or self._custom_fields is None:
+        if not use_cached or self._onoff_fields is None:
             self._fetch_customer_participant_info()
-        onoff_fields = self._custom_fields.get("onOffFields")
-        try:
-            if not isinstance(onoff_fields, list) and isinstance(onoff_fields[0], dict):
+            fields = self._custom_fields.get("onOffFields")
+            if fields is None:
                 return []
-        except IndexError:
-            return []
-
-        custom_fields = []
-        for field in onoff_fields:
-            custom_fields.append(
-                BookeoOnOffField(
-                    field["id"],
-                    field["name"],
-                    field.get("description"),
-                    field["shownToCustomers"],
-                    field["forCustomer"],
-                    field["forParticipants"],
-                    field["index"],
-                    field["defaultState"],
-                )
-            )
-        return custom_fields
+            self._onoff_fields = [BookeoOnOffField.from_dict(f) for f in fields]
+        return self._onoff_fields
 
     def get_text_fields(self, use_cached=True) -> list[BookeoTextField]:
-        if not use_cached or self._custom_fields is None:
+        if not use_cached or self._text_fields is None:
             self._fetch_customer_participant_info()
-        text_fields = self._custom_fields.get("textFields")
-        try:
-            if not isinstance(text_fields, list) and isinstance(text_fields[0], dict):
+            fields = self._custom_fields.get("textFields")
+            if fields is None:
                 return []
-        except IndexError:
-            return []
-
-        custom_fields = []
-        for field in text_fields:
-            custom_fields.append(
-                BookeoTextField(
-                    field["id"],
-                    field["name"],
-                    field.get("description"),
-                    field["shownToCustomers"],
-                    field["forCustomer"],
-                    field["forParticipants"],
-                    field["index"],
-                )
-            )
-        return custom_fields
+            self._text_fields = [BookeoTextField.from_dict(f) for f in fields]
+        return self._text_fields
 
     def get_langs(self, use_cached=True) -> list[BookeoLanguage]:
         if not use_cached or self._languages is None:
             resp = self._request("/settings/languages")
-            data = resp.json()
-            try:
-                if not isinstance(data, list) and isinstance(data[0], dict):
-                    return []
-            except IndexError:
+            if resp.status_code != 200:
                 return []
-
-            self._languages = []
-            for lang in data:
-                self._languages.append(
-                    BookeoLanguage(lang["tag"], lang["name"], lang["customersDefault"])
-                )
+            self._languages = [BookeoLanguage.from_dict(lang) for lang in resp.json()]
         return self._languages
 
     def get_people_categories(self, use_cached=True) -> list[BookeoPeopleCategory]:
         if not use_cached or self._people_categories is None:
             resp = self._request("/settings/peoplecategories")
-            data = resp.json()
-            try:
-                if not isinstance(data, list) and isinstance(data[0], dict):
-                    return []
-            except IndexError:
+            if resp.status_code != 200:
                 return []
-
-            self._people_categories = []
-            for cat in data:
-                self._people_categories.append(
-                    BookeoPeopleCategory(cat["name"], cat["id"], cat["numSeats"])
-                )
+            self._people_categories = [
+                BookeoPeopleCategory.from_dict(c) for c in resp.json()
+            ]
         return self._people_categories
 
-    # TODO: How to give users a choice between paginated responses and all? Iterable?
     def get_products(
         self,
-        type: Optional[str | BookeoProductType],
-        itemsPerPage: Optional[int],
-        pageNavigationToken: str,
-        pageNumber: Optional[int],
+        product_type: Optional[BookeoProductType],
+        items_per_page: Optional[int],
+        nav_token: str,
+        page_number: Optional[int],
         lang: Optional[str],
-        use_cached=True,
-    ) -> tuple[BookeoPagination, list[BookeoProduct]]:
-        # TODO: Complete this method
-        if not use_cached or self._products is None:
-            if isinstance(type, str):
-                type = BookeoProductType.from_str(type)
-            resp = self._request("/settings/products", params={})
-            if resp.status_code != 200 or False:
-                pass
-        return self._products
+    ) -> Optional[tuple[list[BookeoProduct], BookeoPagination]]:
+        resp = self._request(
+            "/settings/products",
+            params={
+                "type": product_type.value,
+                "itemsPerPage": items_per_page,
+                "pageNavigationToken": nav_token,
+                "pageNumber": page_number,
+                "lang": lang,
+            },
+        )
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+        products = [BookeoProduct.from_dict(p) for p in data["data"]]
+        pager = BookeoPagination.from_dict(data["info"])
+        return (products, pager)
 
-    def get_resources(self, use_cached=True):
+    def get_resources(self) -> Optional[tuple[list[BookeoProduct], BookeoPagination]]:
         resp = self._request("/settings/resources")
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+        resources = [BookeoResource.from_dict(p) for p in data["data"]]
+        pager = BookeoPagination.from_dict(data["info"])
+        return (resources, pager)
 
     def get_taxes(self, use_cached=True):
         resp = self._request("/settings/taxes")
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+        taxes = [BookeoTax.from_dict(p) for p in data["data"]]
+        pager = BookeoPagination.from_dict(data["info"])
+        return (taxes, pager)
