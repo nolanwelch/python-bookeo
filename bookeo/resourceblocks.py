@@ -32,12 +32,10 @@ class BookeoResourceBlocks(BookeoAPI):
         )
         if resp.status_code != 200:
             return None
-        info = resp["info"]
-        resource_blocks = [
-            BookeoResourceBlock.from_dict(payment) for payment in info["data"]
-        ]
-        pager = BookeoPagination.from_dict(info)
-        return (resource_blocks, pager)
+        data = resp.json()
+        blocks = [BookeoResourceBlock.from_dict(rb) for rb in data["data"]]
+        pager = BookeoPagination.from_dict(data["info"])
+        return (blocks, pager)
 
     def create_new_resource_block(
         self,
