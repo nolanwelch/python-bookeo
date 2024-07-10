@@ -32,8 +32,9 @@ class BookeoSubaccounts(BookeoAPI):
         if resp.status_code != 200:
             return None
         data = resp.json()
-        accounts = [BookeoSubaccount.from_dict(a) for a in data["data"]]
-        pager = BookeoPagination.from_dict(data["info"])
+        accounts = [BookeoSubaccount(**a) for a in data["data"]]
+        info = data["info"]
+        pager = BookeoPagination(**info)
         return (accounts, pager)
 
     def create_new_subaccount_key(self, id: str) -> Optional[str]:

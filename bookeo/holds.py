@@ -55,23 +55,23 @@ class BookeoHolds(BookeoAPI):
                 "customerId": customer_id,
                 "customer": customer,
                 "externalRef": external_ref,
-                "participants": participants.to_dict(),
-                "resources": [r.to_dict() for r in resources],
+                "participants": participants.model_dump(),
+                "resources": [r.model_dump() for r in resources],
                 "sourceIp": source_ip,
                 "productId": product_id,
-                "options": [o.to_dict() for o in options],
+                "options": [o.model_dump() for o in options],
                 "privateEvent": private_event,
-                "priceAdjustments": [pa.to_dict() for pa in price_adjustments],
+                "priceAdjustments": [pa.model_dump() for pa in price_adjustments],
                 "promotionCodeInput": ",".join(promotion_codes),
                 "giftVoucherCodeInput": ",".join(gift_voucher_codes),
-                "initialPayments": [ip.to_dict() for ip in initial_payments],
+                "initialPayments": [ip.model_dump() for ip in initial_payments],
                 "source": source,
             },
             method="POST",
         )
         location = resp.headers.get("Location")
         data = resp.json()
-        return (location, BookeoHold.from_dict(data))
+        return (location, BookeoHold(**data))
 
     def get_hold(self, id: str) -> Optional[BookeoHold]:
         """Retrieves a previously-generated hold by its id."""
@@ -79,17 +79,7 @@ class BookeoHolds(BookeoAPI):
         data = resp.json()
         if resp.status_code != 200 or not isinstance(data, dict):
             return None
-        return BookeoHold(
-            data["id"],
-            BookeoPrice.from_dict(data["price"]),
-            BookeoMoney.from_dict(data["totalPayable"]),
-            bookeo_timestamp_to_dt(data["expiration"]),
-            BookeoMoney.from_dict(data.get("applicableMoneyCredit")),
-            BookeoMoney.from_dict(data.get("applicableGiftVoucherCredit")),
-            data.get("applicablePrepaidCredits"),
-            data.get("promotionApplicable"),
-            BookeoMoney.from_dict(data.get("appliedPromotionDiscount")),
-        )
+        return BookeoHold(**data)
 
     def delete_hold(self, id: str) -> bool:
         """Delete a temporary hold previously created. Returns True iff successful."""

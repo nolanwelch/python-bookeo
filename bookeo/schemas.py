@@ -1,9 +1,9 @@
-from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import datetime
 from enum import Enum
-from typing import Optional
 
-from .core import bookeo_timestamp_to_dt, dt_to_bookeo_timestamp
+from pydantic import BaseModel, ConfigDict, alias_generators, field_serializer
+
+from .core import dt_to_bookeo_timestamp
 
 # Bookeo enumerable types
 
@@ -66,1084 +66,423 @@ class BookeoWebhookType(BookeoEnum):
 # Object schemas
 
 
-class BookeoField:
-    """Defines a wrapper around a Bookeo field. Takes two parameters:
-    the underlying type and the field's canonical name in the API."""
+class BookeoSchema(BaseModel):
+    model_config = ConfigDict(alias_generator=alias_generators.to_camel)
 
-    def __init__(self, btype: type, cname: str):
-        self.btype = btype
-        self.cname = cname
+    class Config:
+        validate_schema: True
 
 
-class BookeoSchema:
-    # TODO: Implement this https://stackoverflow.com/a/49003922
-    def to_dict(self):
-        raise NotImplementedError
+class BookeoDatetime(BaseModel):
+    dt: datetime
 
-    @classmethod
-    def from_dict(cls, data: dict):
-        raise NotImplementedError
+    @field_serializer("dt")
+    def serialize_dt(self, dt: datetime, _info):
+        return dt_to_bookeo_timestamp(dt)
 
 
-@dataclass
-class BookeoAPIKeyInfo:
+class BookeoAPIKeyInfo(BookeoSchema):
     """Provides detailed information about the API Key being used."""
 
     account_id: str
     permissions: list[str]
-    creation_time: datetime
-
-    def to_dict(self):
-        raise NotImplementedError
-
-    @staticmethod
-    def from_dict(data: dict):
-        if data is None:
-            return None
-        return BookeoAPIKeyInfo(
-            data["accountId"],
-            data["permissions"],
-            bookeo_timestamp_to_dt(data["creationTime"]),
-        )
+    creation_time: BookeoDatetime
 
 
-@dataclass
-class BookeoImage:
+class BookeoImage(BookeoSchema):
     url: str
 
-    def to_dict(self):
-        return {"url": self.url}
 
-    @staticmethod
-    def from_dict(data: dict):
-        if data is None:
-            return None
-        return BookeoImage(data["url"])
-
-
-@dataclass
-class BookeoPhoneNumber:
+class BookeoPhoneNumber(BookeoSchema):
     number: str
-    phone_type: BookeoPhoneType
-
-    def __repr__(self) -> str:
-        return f"BookeoPhoneNumber({self.number} : {self.phone_type})"
-
-    def to_dict(self):
-        return {"number": self.number, "type": self.phone_type.value}
-
-    @staticmethod
-    def from_dict(data: dict):
-        if not isinstance(data, dict):
-            return None
-        return BookeoPhoneNumber(
-            data.get("number"), BookeoPhoneType.from_str(data.get("type"))
-        )
+    type: BookeoPhoneType
 
 
-@dataclass
-class BookeoStreetAddress:
-    address_1: Optional[str]
-    address_2: Optional[str]
-    city: Optional[str]
-    country_code: Optional[str]
-    state: Optional[str]
-    post_code: Optional[str]
-
-    @staticmethod
-    def from_dict(data: dict):
-        if not isinstance(data, dict):
-            return None
-        return BookeoStreetAddress(
-            data.get("address1"),
-            data.get("address2"),
-            data.get("city"),
-            data.get("countryCode"),
-            data.get("state"),
-            data.get("postcode"),
-        )
+class BookeoStreetAddress(BookeoSchema):
+    address_1: str = None
+    address_2: str = None
+    city: str = None
+    country_code: str = None
+    state: str = None
+    postcode: str = None
 
 
-@dataclass
-class BookeoBusinessInfo:
+class BookeoBusinessInfo(BookeoSchema):
     id: str
     name: str
-    legal_identifiers: Optional[str]
+    legal_identifiers: str = None
     phone_numbers: list[BookeoPhoneNumber]
-    website_url: Optional[str]
-    email: Optional[str]
+    website_URL: str = None
+    email_address: str = None
     street_address: BookeoStreetAddress
-    logo: Optional[BookeoImage]
-    description: Optional[str]
-
-    def __repr__(self) -> str:
-        return f"BookeoBusinessInfo({self.id}, {self.name})"
-
-    def to_dict(self):
-        raise NotImplementedError
-
-    @staticmethod
-    def from_dict(data: dict):
-        if data is None:
-            return None
-        return BookeoBusinessInfo(
-            data["id"],
-            data["name"],
-            data.get("legalIdentifiers"),
-            [BookeoPhoneNumber.from_dict(num) for num in data["phoneNumbers"]],
-            data.get("websiteURL"),
-            data.get("emailAddress"),
-            BookeoStreetAddress.from_dict(data["streetAddress"]),
-            BookeoImage.from_dict(data.get("logo")),
-            data.get("description"),
-        )
+    logo: BookeoImage = None
+    description: str = None
 
 
-@dataclass
-class BookeoBooking:
-    """Represents a booking"""
-
-    title: str
-    creation_time: datetime
-    creation_agent: str
-    product_id: str
-
-
-@dataclass
-class BookeoBookingOption:
-    value: str
-    id: Optional[str]
-    name: Optional[str]
-
-    def to_dict(self):
-        return {"value": self.value, "id": self.id, "name": self.name}
-
-    @staticmethod
-    def from_dict(data: dict):
-        return BookeoBookingOption(data["value"], data.get("id"), data.get("name"))
-
-
-@dataclass
-class BookeoCustomChoiceValue:
+class BookeoFieldOption(BookeoSchema):
     id: str
     name: str
     description: str
 
-    def to_dict(self):
-        raise NotImplementedError
 
-    @staticmethod
-    def from_dict(data: dict):
-        if data is None:
-            return None
-        return BookeoCustomChoiceValue(
-            data["id"],
-            data["name"],
-            data["description"],
-        )
+class BookeoBookingOption(BookeoSchema):
+    value: str
+    id: str = None
+    name: str = None
 
 
-@dataclass
-class BookeoCustomField:
+class BookeoCustomChoiceValue(BookeoFieldOption):
+    pass
+
+
+# TODO:
+class BookeoCustomField(BookeoSchema):
     id: str
     name: str
-    description: Optional[str]
+    description: str = None
     shown_to_customers: bool
     for_customer: bool
     for_participants: bool
     index: int
 
 
-@dataclass
 class BookeoChoiceField(BookeoCustomField):
-    id: str
-    name: str
-    description: Optional[str]
-    shownToCustomers: bool
-    forCustomer: bool
-    forParticipants: bool
-    index: int
     values: list[BookeoCustomChoiceValue]
-    defaultValueId: Optional[str]
-
-    def to_dict(self):
-        raise NotImplementedError
-
-    @staticmethod
-    def from_dict(data: dict):
-        if data is None:
-            return None
-        return BookeoChoiceField(
-            data["id"],
-            data["name"],
-            data.get("description"),
-            data["shownToCustomers"],
-            data["forCustomer"],
-            data["forParticipants"],
-            data["index"],
-            [BookeoCustomChoiceValue.from_dict(v) for v in data["values"]],
-            data.get("defaultValueId"),
-        )
+    default_value_id: str = None
 
 
-@dataclass
-class BookeoChoiceOptionValue:
-    id: str
-    name: str
-    description: str
-
-    def to_dict(self):
-        raise NotImplementedError
-
-    @staticmethod
-    def from_dict(data: dict):
-        if data is None:
-            return None
-        return BookeoChoiceOptionValue(
-            data["id"],
-            data["name"],
-            data["description"],
-        )
+class BookeoChoiceOptionValue(BookeoFieldOption):
+    pass
 
 
-@dataclass
-class BookeoChoiceOption:
-    id: str
-    name: str
+class BookeoChoiceOption(BookeoFieldOption):
     index: int
-    description: Optional[str]
     shown_to_customers: bool
     enabled: bool
     values: list[BookeoChoiceOptionValue]
-    default_value_id: Optional[str]
-
-    def to_dict(self):
-        raise NotImplementedError
-
-    @staticmethod
-    def from_dict(data: dict):
-        if data is None:
-            return None
-        return BookeoChoiceOption(
-            data["id"],
-            data["name"],
-            data["index"],
-            data.get("description"),
-            data["shownToCustomers"],
-            data["enabled"],
-            [BookeoChoiceOptionValue.from_dict(v) for v in data["values"]],
-            data.get("defaultValueId"),
-        )
+    default_value_id: str = None
 
 
-@dataclass
 class BookeoNumberField(BookeoCustomField):
-    id: str
-    name: str
-    description: Optional[str]
-    shown_to_customers: bool
-    for_customer: bool
-    for_participants: bool
-    index: int
     min_value: int
     max_value: int
     default_value: int
 
-    def to_dict(self):
-        raise NotImplementedError
 
-    @staticmethod
-    def from_dict(data: dict):
-        return BookeoNumberField(
-            data["id"],
-            data["name"],
-            data.get("description"),
-            data["shownToCustomers"],
-            data["forCustomer"],
-            data["forParticipants"],
-            data["index"],
-            data["minValue"],
-            data["maxValue"],
-            data["defaultValue"],
-        )
-
-
-@dataclass
-class BookeoNumberOption:
-    id: str
-    name: str
+class BookeoNumberOption(BookeoFieldOption):
     index: int
-    description: Optional[str]
     shown_to_customers: bool
     enabled: bool
     min_value: int
     max_value: int
     default_value: int
 
-    def to_dict(self):
-        raise NotImplementedError
 
-    @staticmethod
-    def from_dict(data: dict):
-        if data is None:
-            return None
-        return BookeoNumberOption(
-            data["id"],
-            data["name"],
-            data["index"],
-            data.get("description"),
-            data["shownToCustomers"],
-            data["enabled"],
-            data["minValue"],
-            data["maxValue"],
-            data["defaultValue"],
-        )
-
-
-@dataclass
 class BookeoOnOffField(BookeoCustomField):
-    id: str
-    name: str
-    description: Optional[str]
-    shown_to_customers: bool
-    for_customer: bool
-    for_participants: bool
-    index: int
     default_state: bool
 
-    def to_dict(self):
-        raise NotImplementedError
 
-    @staticmethod
-    def from_dict(data: dict):
-        if data is None:
-            return None
-        return BookeoOnOffField(
-            data["id"],
-            data["name"],
-            data.get("description"),
-            data["shownToCustomers"],
-            data["forCustomer"],
-            data["forParticipants"],
-            data["index"],
-            data["defaultState"],
-        )
-
-
-@dataclass
-class BookeoOnOffOption:
-    id: str
-    name: str
+class BookeoOnOffOption(BookeoFieldOption):
     index: int
-    description: Optional[str]
     shown_to_customers: bool
     enabled: bool
     default: bool
 
-    @staticmethod
-    def from_dict(data: dict):
-        if data is None:
-            return None
-        return BookeoOnOffOption(
-            data["id"],
-            data["name"],
-            data["index"],
-            data.get("description"),
-            data["shownToCustomers"],
-            data["enabled"],
-            data["defaultState"],
-        )
+
+class BookeoTextField(BookeoCustomField):
+    pass
 
 
-@dataclass
-class BookeoTextField:
-    id: str
-    name: str
-    description: Optional[str]
-    shown_to_customers: bool
-    for_customer: bool
-    for_participants: bool
+class BookeoTextOption(BookeoCustomField):
     index: int
-
-    def to_dict(self):
-        raise NotImplementedError
-
-    @staticmethod
-    def from_dict(data: dict):
-        if data is None:
-            return None
-        return BookeoTextField(
-            data["id"],
-            data["name"],
-            data.get("description"),
-            data["shownToCustomers"],
-            data["forCustomer"],
-            data["forParticipants"],
-            data["index"],
-        )
-
-
-@dataclass
-class BookeoTextOption:
-    id: str
-    name: str
-    index: int
-    description: Optional[str]
     shown_to_customers: bool
     enabled: bool
     required: bool
 
-    def to_dict(self):
-        raise NotImplementedError
 
-    @staticmethod
-    def from_dict(data: dict):
-        if data is None:
-            return None
-        return BookeoTextOption(
-            data["id"],
-            data["name"],
-            data["index"],
-            data.get("description"),
-            data["shownToCustomers"],
-            data["enabled"],
-            data["required"],
-        )
-
-
-@dataclass
-class BookeoBookingLimit:
-    people_category_id: Optional[str]
+class BookeoBookingLimit(BookeoSchema):
+    people_category_id: str = None
     min: int
     max: int
 
-    def to_dict(self):
-        raise NotImplementedError
 
-    @staticmethod
-    def from_dict(data: dict):
-        if data is None:
-            return None
-        return BookeoBookingLimit(
-            data.get("peopleCategoryId"),
-            data["min"],
-            data["max"],
-        )
-
-
-@dataclass
-class BookeoDuration:
+# TODO: Should there be a conversion from this class to timedelta?
+class BookeoDuration(BookeoSchema):
     days: int
     hours: int
     minutes: int
 
-    def to_dict(self):
-        raise NotImplementedError
 
-    @staticmethod
-    def from_dict(data: dict):
-        if data is None:
-            return None
-        return BookeoDuration(
-            data["days"],
-            data["hours"],
-            data["minutes"],
-        )
-
-
-@dataclass
-class BookeoMoney:
+class BookeoMoney(BookeoSchema):
     amount: str
     currency: str
 
-    def to_dict(self):
-        return {"amount": self.amount, "currency": self.currency}
 
-    @staticmethod
-    def from_dict(data: dict):
-        return BookeoMoney(data["amount"], data["currency"])
-
-
-@dataclass
-class BookeoPayment:
+class BookeoPayment(BookeoSchema):
     id: str
-    creation_time: datetime
-    received_time: datetime
+    creation_time: BookeoDatetime
+    received_time: BookeoDatetime
     reason: str
-    description: Optional[str]
-    comment: Optional[str]
+    description: str = None
+    comment: str = None
     amount: BookeoMoney
     payment_method: BookeoPaymentMethod
-    payment_method_other: Optional[str]
-    agent: Optional[str]
-    customer_id: Optional[str]
-    gateway_name: Optional[str]
-    transaction_id: Optional[str]
-
-    def to_dict(self):
-        return {
-            "receivedTime": dt_to_bookeo_timestamp(self.received_time),
-            "reason": self.reason,
-            "comment": self.comment,
-            "amount": self.amount.to_dict(),
-            "paymentMethod": self.payment_method.value,
-            "paymentMethodOther": self.payment_method_other,
-        }
-
-    @staticmethod
-    def from_dict(data: dict):
-        return BookeoPayment(
-            data["id"],
-            bookeo_timestamp_to_dt(data["creationTime"]),
-            bookeo_timestamp_to_dt(data["receivedTime"]),
-            data["reason"],
-            data.get("description"),
-            data.get("comment"),
-            BookeoMoney.from_dict(data["money"]),
-            BookeoPaymentMethod.from_str(data["paymentMethod"]),
-            data.get("paymentMethodOther"),
-            data.get("agent"),
-            data.get("customerId"),
-            data.get("gatewayName"),
-            data.get("transactionId"),
-        )
+    payment_method_other: str = None
+    agent: str = None
+    customer_id: str = None
+    gateway_name: str = None
+    transaction_id: str = None
 
 
-@dataclass
-class BookeoPriceAdjustment:
+class BookeoPriceAdjustment(BookeoSchema):
     unit_price: BookeoMoney
     quantity: int
     description: str
-    tax_ids: Optional[list[str]]
-
-    def to_dict(self):
-        return {
-            "unitPrice": self.unit_price.to_dict(),
-            "quantity": self.quantity,
-            "description": self.description,
-            "taxIds": [id for id in self.tax_ids],
-        }
-
-    @staticmethod
-    def from_dict(data: dict):
-        return BookeoPriceAdjustment(
-            BookeoMoney.from_dict(data["unitPrice"]),
-            data["quantity"],
-            data["description"],
-            data["taxIds"],
-        )
+    tax_ids: list[str] = None
 
 
-@dataclass
-class BookeoTax:
+class BookeoTax(BookeoSchema):
     id: str
     name: str
     enabled: bool
 
-    def to_dict(self):
-        raise NotImplementedError
 
-    @staticmethod
-    def from_dict(data: dict):
-        if data is None:
-            return None
-        return BookeoTax[
-            data["id"],
-            data["name"],
-            data["enabled"],
-        ]
-
-
-@dataclass
-class BookeoPriceTax:
+class BookeoPriceTax(BookeoSchema):
     tax_id: str
     amount: BookeoMoney
 
-    @staticmethod
-    def from_dict(data: dict):
-        if data is None:
-            return None
-        return BookeoPriceTax(data["taxId"], data["amount"])
+
+class BookeoPriceRate(BookeoSchema):
+    people_category_id: str = None
+    price: BookeoMoney = None
 
 
-@dataclass
-class BookeoPriceRate:
-    people_category_id: Optional[str]
-    price: Optional[BookeoMoney]
-
-    def to_dict(self):
-        raise NotImplementedError
-
-    @staticmethod
-    def from_dict(data: dict):
-        if data is None:
-            return None
-        return BookeoPriceRate(
-            data.get("peopleCategoryId"),
-            BookeoMoney.from_dict(data.get("price")),
-        )
-
-
-@dataclass
-class BookeoProduct:
+class BookeoProduct(BookeoSchema):
     name: str
-    description: Optional[str]
-    images: Optional[list[BookeoImage]]
+    description: str = None
+    images: list[BookeoImage] = None
     product_id: str
     product_code: str
     booking_limits: list[BookeoBookingLimit]
-    default_rates: Optional[list[BookeoPriceRate]]
+    default_rates: list[BookeoPriceRate] = None
     duration: BookeoDuration
-    product_type: BookeoProductType
+    type: BookeoProductType
     members_only: bool
     prepaid_only: bool
     accept_deny: bool
     api_bookings_allowed: bool
-    dropin_only: bool
-    allow_private_events: Optional[bool]
-    choice_options: list[BookeoChoiceOption]
-    number_options: list[BookeoNumberOption]
-    on_off_options: list[BookeoOnOffOption]
-    text_options: list[BookeoTextOption]
-
-    def to_dict(self):
-        raise NotImplementedError
-
-    @staticmethod
-    def from_dict(data: dict):
-        if data is None:
-            return None
-        return BookeoProduct(
-            data["name"],
-            data.get("description"),
-            [BookeoImage.from_dict(i) for i in data.get("images", [])],
-            data["productId"],
-            data["productCode"],
-            [BookeoBookingLimit.from_dict(b) for b in data["bookingLimits"]],
-            [BookeoPriceRate.from_dict(r) for r in data.get("defaultRates", [])],
-            BookeoDuration.from_dict(data["duration"]),
-            BookeoProductType.from_str(data["type"]),
-            data["membersOnly"],
-            data["prepaidOnly"],
-            data["acceptDeny"],
-            data["apiBookingsAllowed"],
-            data["dropInOnly"],
-            data.get("allowPrivateEvents"),  # TODO: Implement below
-            [BookeoChoiceOption.from_dict(c) for c in data.get("choiceOptions", [])],
-            [BookeoNumberOption.from_dict(c) for c in data.get("numberOptions", [])],
-            [BookeoOnOffOption.from_dict(c) for c in data.get("onOffOptions", [])],
-            [BookeoTextOption.from_dict(c) for c in data.get("textOptions", [])],
-        )
+    drop_in_only: bool
+    allow_private_events: bool = None
+    choice_options: list[BookeoChoiceOption] = None
+    number_options: list[BookeoNumberOption] = None
+    on_off_options: list[BookeoOnOffOption] = None
+    text_options: list[BookeoTextOption] = None
 
 
-@dataclass
-class TelephoneNumber:
-    """Describes a phone/fax number"""
-
-    number: str
-
-
-@dataclass
-class BookeoWebhook:
+class BookeoWebhook(BookeoSchema):
     id: str
     url: str
     domain: BookeoWebhookDomain
-    webhook_type: BookeoWebhookType
-    blocked_time: Optional[datetime]
-    blocked_reason: Optional[str]
-
-    def to_dict(self):
-        raise NotImplementedError
-
-    @staticmethod
-    def from_dict(data: dict):
-        return BookeoWebhook(
-            data["id"],
-            data["url"],
-            BookeoWebhookDomain.from_str(data["domain"]),
-            BookeoWebhookType.from_str(data["type"]),
-            bookeo_timestamp_to_dt(data.get("blockedTime")),
-            data.get("blockedReason"),
-        )
+    type: BookeoWebhookType
+    blocked_time: BookeoDatetime = None
+    blocked_reason: str = None
 
 
-@dataclass
-class BookeoLanguage:
+class BookeoLanguage(BookeoSchema):
     tag: str
     name: str
     customers_default: bool
 
-    def to_dict(self):
-        raise NotImplementedError
 
-    @staticmethod
-    def from_dict(data: dict):
-        if data is None:
-            return None
-        return BookeoLanguage(data["tag"], data["name"], data["customersDefault"])
-
-
-@dataclass
-class BookeoPeopleCategory:
+class BookeoPeopleCategory(BookeoSchema):
     name: str
     id: str
-    numSeats: int
-
-    def to_dict(self):
-        raise NotImplementedError
-
-    @staticmethod
-    def from_dict(data: dict):
-        if data is None:
-            return None
-        return BookeoPeopleCategory(data["name"], data["id"], data["numSeats"])
+    num_seats: int
 
 
-@dataclass
-class BookeoPagination:
+class BookeoPagination(BookeoSchema):
     total_items: int
     total_pages: int
     current_page: int
-    nav_token: Optional[str]
-
-    @staticmethod
-    def from_dict(info: dict):
-        page_nav = info.get("pageNavigationToken")
-        if page_nav is None:
-            return None
-        return BookeoPagination(
-            info["totalItems"],
-            info["totalPages"],
-            info["currentPage"],
-            page_nav,
-        )
+    page_navigation_token: str = None
 
 
-@dataclass
-class BookeoSubaccount:
+class BookeoSubaccount(BookeoSchema):
     id: str
     name: str
 
-    @staticmethod
-    def from_dict(data: dict):
-        if data is None:
-            return None
-        return BookeoSubaccount(
-            data["id"],
-            data["name"],
-        )
 
-
-@dataclass
-class BookeoPrice:
+class BookeoPrice(BookeoSchema):
     total_gross: BookeoMoney
     total_net: BookeoMoney
     total_taxes: BookeoMoney
     total_paid: BookeoMoney
     taxes: list[BookeoPriceTax]
 
-    @staticmethod
-    def from_dict(data: dict):
-        if data is None:
-            return None
-        taxes = [BookeoPriceTax.from_dict(t) for t in data["taxes"]]
-        return BookeoPrice(
-            data["totalGross"],
-            data["totalNet"],
-            data["totalTaxes"],
-            data["totalPaid"],
-            taxes,
-        )
 
-
-@dataclass
-class BookeoResource:
+class BookeoResource(BookeoSchema):
+    name: str
     id: str
 
-    def to_dict(self):
-        return {"id": self.id}
 
-    @staticmethod
-    def from_dict(data: dict):
-        return BookeoResource(data["id"])
+class BookeoResourceType(BookeoSchema):
+    name: str = None
+    id: str = None
+    is_public: bool = None
+    resources: list[BookeoResource] = None
 
 
-@dataclass
-class BookeoCourseEvent:
+class BookeoCourseEvent(BookeoSchema):
     event_number: int
     event_id: str
-    start_time: datetime
-    end_time: datetime
-
-    @staticmethod
-    def from_dict(data: dict):
-        if data is None:
-            return None
-        return BookeoCourseEvent(
-            data["eventNumber"],
-            data["eventId"],
-            bookeo_timestamp_to_dt(data["startTime"]),
-            bookeo_timestamp_to_dt(data["endTime"]),
-        )
+    start_time: BookeoDatetime
+    end_time: BookeoDatetime
 
 
-@dataclass
-class BookeoCourseSchedule:
+class BookeoCourseSchedule(BookeoSchema):
     events: list[BookeoCourseEvent]
     title: str
 
-    @staticmethod
-    def from_dict(data: dict):
-        if data is None:
-            return None
-        return BookeoCourseSchedule(
-            [BookeoCourseEvent.from_dict(e) for e in data["events"]],
-            data["title"],
-        )
 
-
-@dataclass
-class BookeoMatchingSlot:
-    start_time: datetime
-    end_time: datetime
-    price: Optional[BookeoMoney]
-    course_schedule: Optional[BookeoCourseSchedule]
+class BookeoMatchingSlot(BookeoSchema):
+    start_time: BookeoDatetime
+    end_time: BookeoDatetime
+    price: BookeoMoney = None
+    course_schedule: BookeoCourseSchedule = None
     event_id: str
-    resources: Optional[list[BookeoResource]]
-
-    @staticmethod
-    def from_dict(data: dict):
-        if data is None:
-            return None
-        return BookeoMatchingSlot(
-            bookeo_timestamp_to_dt(data["startTime"]),
-            bookeo_timestamp_to_dt(data["endTime"]),
-            BookeoMoney.from_dict(data.get("price")),
-            BookeoCourseSchedule.from_dict(data.get("courseSchedule")),
-            data["eventId"],
-            [BookeoResource.from_dict(r) for r in data.get("resources", [])],
-        )
+    resources: list[BookeoResource] = None
 
 
-@dataclass
-class BookeoHold:
+class BookeoHold(BookeoSchema):
     id: str
     price: BookeoPrice
     total_payable: BookeoMoney
-    expiration: datetime
-    applicable_money_credit: Optional[BookeoMoney]
-    applicable_giftvoucher_credit: Optional[BookeoMoney]
-    applicable_prepaid_credits: Optional[int]
-    promotion_applicable: Optional[bool]
-    applied_promotion_discount: Optional[BookeoMoney]
-
-    # TODO: Write BookeoHold.__str__()
-    def __str__(self):
-        raise NotImplementedError
-
-    @staticmethod
-    def from_dict(data: dict):
-        if data is None:
-            return None
-        return BookeoHold(
-            data["id"],
-            BookeoPrice.from_dict(data["price"]),
-            BookeoMoney.from_dict(data["totalPayable"]),
-            bookeo_timestamp_to_dt(data["expiration"]),
-            BookeoMoney.from_dict(data.get("applicableMoneyCredit")),
-            BookeoMoney.from_dict(data.get("applicableGiftVoucherCredit")),
-            data.get("applicablePrepaid"),
-            data.get("promotionApplicable"),
-            BookeoMoney.from_dict(data.get("appliedPromotionDiscount")),
-        )
+    expiration: BookeoDatetime
+    applicable_money_credit: BookeoMoney = None
+    applicable_gift_voucher_credit: BookeoMoney = None
+    applicable_prepaid_credits: int = None
+    promotion_applicable: bool = None
+    applied_promotion_discount: BookeoMoney = None
 
 
 # TODO: Okay idk what is going on with LinkedPerson, but it seems to have multiple conflicting definitions in the Bookeo API.
-@dataclass
-class BookeoLinkedPerson:
+class BookeoLinkedPerson(BookeoSchema):
     id: str
+    first_name: str = None
+    middle_name: str = None
+    last_name: str = None
+    email_address: str = None
+    phone_numbers: list[BookeoPhoneNumber] = None
+    street_address: BookeoStreetAddress = None
+    creation_time: BookeoDatetime
+    start_time_of_next_booking: BookeoDatetime = None
+    start_time_of_previous_booking: BookeoDatetime = None
+    date_of_birth: BookeoDatetime = None
+    custom_fields: list[BookeoCustomField] = None
+    gender: BookeoGender = None
     customer_id: str
-    creation_time: datetime
-    first_name: Optional[str]
-    middle_name: Optional[str]
-    last_name: Optional[str]
-    email: Optional[str]
-    phone_numbers: Optional[list[BookeoPhoneNumber]]
-    street_address: Optional[BookeoStreetAddress]
-    next_booking_start_time: Optional[datetime]
-    prev_booking_start_time: Optional[datetime]
-    date_of_birth: Optional[date]
-    custom_fields: Optional[list[BookeoCustomField]]
-    gender: Optional[BookeoGender]
-
-    def to_dict(self):
-        return {
-            "firstName": self.first_name,
-            "middleName": self.middle_name,
-            "lastName": self.last_name,
-            "emailAddress": self.email,
-            "phoneNumbers": [num.to_dict() for num in self.phone_numbers],
-            "streetAddress": (self.street_address.to_dict()),
-            "dateOfBirth": self.date_of_birth.strftime(r"%Y-%m-%d"),
-            "customFields": [cf.to_dict() for cf in self.custom_fields],
-            "gender": self.gender.value,
-        }
-
-    @staticmethod
-    def from_dict(data: dict):
-        return BookeoLinkedPerson(
-            data["id"],
-        )
 
 
-@dataclass
-class BookeoPeopleNumber:
+class BookeoPeopleNumber(BookeoSchema):
     people_category_id: str
     number: int
 
-    def to_dict(self):
-        return {
-            "peopleCategoryId": self.people_category_id,
-            "number": self.number,
-        }
+
+class BookeoCustomer(BookeoSchema):
+    id: str
+    first_name: str = None
+    middle_name: str = None
+    last_name: str = None
+    email_address: str = None
+    phone_numbers: list[BookeoPhoneNumber] = None
+    street_address: BookeoStreetAddress = None
+    start_time_of_next_booking: BookeoDatetime = None
+    start_time_of_previous_booking: BookeoDatetime = None
+    date_of_birth: BookeoDatetime = None
+    custom_fields: list[BookeoCustomField] = None
+    gender: BookeoGender = None
+    facebook_id: str = None
+    language_code: str = None
+    accept_sms_reminders: bool = None
+    num_bookings: int = None
+    num_cancelations: int = None
+    num_no_shows: int = None
+    member: bool = None
+    membership_end: BookeoDatetime = None
 
 
-@dataclass
-class BookeoCustomer:
-    first_name: Optional[str]
-    last_name: Optional[str]
-    middle_name: Optional[str]
-    email: Optional[str]
-    phone_numbers: Optional[list[BookeoPhoneNumber]]
-    street_address: Optional[BookeoStreetAddress]
-    date_of_birth: Optional[date]
-    custom_fields: Optional[list[BookeoCustomField]]
-    gender: Optional[BookeoGender]
-    facebook_id: Optional[str]
-    lang_code: Optional[str]
-    accept_sms_reminders: Optional[bool]
-
-    # TODO: Finish implementing this
-    def to_dict(self):
-        raise NotImplementedError
-        return {
-            "firstName": self.first_name,
-            "middleName": self.middle_name,
-            "lastName": self.last_name,
-            "emailAddress": self.email,
-            "phoneNumbers": [num.to_dict() for num in self.phone_numbers],
-            "streetAddress": self.street_address.to_dict(),
-            "dateOfBirth": self.date_of_birth.strftime(r"%Y-%m-%d"),
-            "customFields": [cf.to_dict() for cf in self.custom_fields],
-            "gender": self.gender.value,
-            "facebookId": self.facebook_id,
-            "languageCode": self.lang_code,
-            "acceptSmsReminders": self.accept_sms_reminders,
-        }
-
-    @staticmethod
-    def from_dict(data: dict):
-        return BookeoCustomer(
-            data.get("firstName"),
-            data.get("lastName"),
-            data.get("middleName"),
-            data.get("emailAddress"),
-            [BookeoPhoneNumber.from_dict(num) for num in data.get("phoneNumbers")],
-            BookeoStreetAddress.from_dict(data.get("streetAddress")),
-            datetime.strptime(data.get("dateOfBirth"), r"%Y-%m-%d"),
-            [BookeoCustomField.from_dict(cf) for cf in data.get("customFields")],
-            BookeoGender.from_str(data.get("gender")),
-            data.get("facebookId"),
-            data.get("languageCode"),
-            data.get("acceptSmsReminders"),
-        )
-
-
-@dataclass
-class BookeoParticipant:
+class BookeoParticipant(BookeoSchema):
     person_id: str
     people_category_id: str
-    category_idx: int
-    person_details: Optional[BookeoLinkedPerson]
-
-    def to_dict(self):
-        return {
-            "personId": self.person_id,
-            "peopleCategoryId": self.people_category_id,
-            "categoryIndex": self.category_idx,
-            "personDetails": self.person_details.to_dict(),
-        }
+    category_index: int
+    person_details: BookeoLinkedPerson = None
 
 
-@dataclass
-class BookeoParticipants:
+class BookeoParticipants(BookeoSchema):
     numbers: list[BookeoPeopleNumber]
-    participants: Optional[list[BookeoParticipant]]
-
-    def to_dict(self):
-        return {
-            "numbers": [pn.to_dict() for pn in self.numbers],
-            "details": [p.to_dict() for p in self.participants],
-        }
+    details: list[BookeoParticipant] = None
 
 
-@dataclass
-class BookeoResourceBlock:
+class BookeoResourceBlock(BookeoSchema):
     id: str
-    start_time: datetime
-    end_time: datetime
-    reason: Optional[str]
+    start_time: BookeoDatetime
+    end_time: BookeoDatetime
+    reason: str = None
     resources: list[BookeoResource]
     creation_time: datetime
     creation_agent: str
-    last_change_time: Optional[datetime]
-    last_change_agent: Optional[str]
-
-    def to_dict(self):
-        raise NotImplementedError
-
-    @staticmethod
-    def from_dict(data: dict):
-        return BookeoResourceBlock(
-            data["id"],
-            bookeo_timestamp_to_dt(data["startTime"]),
-            bookeo_timestamp_to_dt(data["endTime"]),
-            data.get("reason"),
-            [BookeoResource.from_dict(r) for r in data["resources"]],
-            bookeo_timestamp_to_dt(data["creationTime"]),
-            data["creationAgent"],
-            bookeo_timestamp_to_dt(data.get("lastChangeTime")),
-            data.get("lastChangeAgent"),
-        )
+    last_change_time: BookeoDatetime = None
+    last_change_agent: str = None
 
 
-@dataclass
-class BookeoSeatBlock:
+class BookeoSeatBlock(BookeoSchema):
     id: str
     event_id: str
     product_id: str
-    reason: Optional[str]
+    reason: str = None
     num_seats: int
-    start_time: Optional[datetime]
+    start_time: BookeoDatetime = None
     creation_time: datetime
     creation_agent: str
-    last_change_time: Optional[datetime]
-    last_change_agent: Optional[str]
+    last_change_time: BookeoDatetime = None
+    last_change_agent: str = None
 
-    def to_dict(self):
-        raise NotImplementedError
 
-    @staticmethod
-    def from_dict(data: dict):
-        return BookeoSeatBlock(
-            data["id"],
-            data["eventId"],
-            data["productId"],
-            data.get("reason"),
-            data["numSeats"],
-            bookeo_timestamp_to_dt(data.get("startTime")),
-            bookeo_timestamp_to_dt(data["creationTime"]),
-            data["creationAgent"],
-            bookeo_timestamp_to_dt(data.get("lastChangeTime")),
-            data.get("lastChangeAgent"),
-        )
+class BookeoBooking(BookeoSchema):
+    """Represents a booking"""
+
+    booking_number: str = None
+    event_id: str = None
+    first_course_enrolled_event_id: str = None
+    dropin_course_enrolled_event_id: str = None
+    start_time: BookeoDatetime = None
+    end_time: BookeoDatetime = None
+    customer_id: str = None
+    customer: BookeoCustomer = None
+    title: str
+    external_ref: str = None
+    participants: BookeoParticipants
+    resources: list[BookeoResource] = None
+    canceled: bool = None
+    cancelation_time: BookeoDatetime = None
+    cancelation_agent: str = None
+    accepted: bool = None
+    source_ip: str = None
+    creation_time: BookeoDatetime
+    creation_agent: str
+    last_change_time: BookeoDatetime = None
+    last_change_agent: str = None
+    product_name: str = None
+    product_id: str
+    options: list[BookeoBookingOption] = None
+    private_event: bool = None
+    price_adjustments: list[BookeoPriceAdjustment] = None
+    promotion_code_input: str = None
+    promotion_name: str = None
+    coupon_codes: list[str] = None
+    gift_voucher_code_input: str = None
+    specific_voucher_code: str = None
+    initial_payments: list[BookeoPayment] = None
+    no_show: bool = None
+    price: BookeoPrice = None
+    source: str = None

@@ -33,8 +33,9 @@ class BookeoResourceBlocks(BookeoAPI):
         if resp.status_code != 200:
             return None
         data = resp.json()
-        blocks = [BookeoResourceBlock.from_dict(rb) for rb in data["data"]]
-        pager = BookeoPagination.from_dict(data["info"])
+        blocks = [BookeoResourceBlock(**rb) for rb in data["data"]]
+        info = data["info"]
+        pager = BookeoPagination(**info)
         return (blocks, pager)
 
     def create_new_resource_block(
@@ -51,7 +52,7 @@ class BookeoResourceBlocks(BookeoAPI):
                 "startTime": dt_to_bookeo_timestamp(start_time),
                 "endTime": dt_to_bookeo_timestamp(end_time),
                 "reason": reason,
-                "resources": [r.to_dict() for r in resources],
+                "resources": [r.model_dump() for r in resources],
             },
             method="POST",
         )
@@ -59,14 +60,15 @@ class BookeoResourceBlocks(BookeoAPI):
             return None
         location = resp.headers.get("Location")
         data = resp.json()
-        return (location, BookeoResourceBlock.from_dict(data))
+        return (location, BookeoResourceBlock(**data))
 
     def get_resource_block(self, id: str) -> Optional[BookeoResourceBlock]:
         """Retrieves a resource block by its id."""
         resp = self._request(f"/resourceblocks/{id}")
         if resp.status_code != 200:
             return None
-        return BookeoResourceBlock.from_dict(resp.json())
+        data = resp.json()
+        return BookeoResourceBlock(**data)
 
     def update_resource_block(
         self,
@@ -83,7 +85,7 @@ class BookeoResourceBlocks(BookeoAPI):
                 "startTime": dt_to_bookeo_timestamp(start_time),
                 "endTime": dt_to_bookeo_timestamp(end_time),
                 "reason": reason,
-                "resources": [r.to_dict() for r in resources],
+                "resources": [r.model_dump() for r in resources],
             },
             method="PUT",
         )

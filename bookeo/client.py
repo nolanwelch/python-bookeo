@@ -5,7 +5,6 @@ from .bookings import BookeoBookings
 from .customers import BookeoCustomers
 from .holds import BookeoHolds
 from .payments import BookeoPayments
-from .request import BookeoRequest
 from .resourceblocks import BookeoResourceBlocks
 from .seatblocks import BookeoSeatblocks
 from .settings import BookeoSettings
