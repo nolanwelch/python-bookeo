@@ -32,9 +32,10 @@ class BookeoSeatblocks(BookeoAPI):
         )
         if resp.status_code != 200:
             return None
-        info = resp["info"]
-        seat_blocks = [BookeoSeatBlock.from_dict(payment) for payment in info["data"]]
-        pager = BookeoPagination.from_dict(info)
+        data = resp.json()
+        seat_blocks = [BookeoSeatBlock(**sb) for sb in data["data"]]
+        info = data["info"]
+        pager = BookeoPagination(**info)
         return (seat_blocks, pager)
 
     def create_seat_block(
@@ -55,14 +56,15 @@ class BookeoSeatblocks(BookeoAPI):
             return None
         location = resp.headers.get("Location")
         data = resp.json()
-        return (location, BookeoSeatBlock.from_dict(data))
+        return (location, BookeoSeatBlock(**data))
 
     def get_seat_block(self, id: str) -> Optional[BookeoSeatBlock]:
         """Retrieves a seat block by its id."""
         resp = self._request(f"/seatblocks/{id}")
         if resp.status_code != 200:
             return None
-        return BookeoSeatBlock.from_dict(resp.json())
+        data = resp.json()
+        return BookeoSeatBlock(**data)
 
     def update_seat_block(
         self, event_id: str, product_id: str, reason: Optional[str], num_seats: int
@@ -81,7 +83,7 @@ class BookeoSeatblocks(BookeoAPI):
             return None
         location = resp.headers.get("Location")
         data = resp.json()
-        return (location, BookeoSeatBlock.from_dict(data))
+        return (location, BookeoSeatBlock(**data))
 
     def delete_seat_block(self, id: str) -> bool:
         """Deletes a seat block, returning True if successful."""

@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 import requests
@@ -6,15 +7,14 @@ from .client import BookeoClient
 from .core import BookeoAPI
 from .schemas import (
     BookeoBooking,
-    BookeoDateTime,
+    BookeoBookingOption,
+    BookeoCustomer,
+    BookeoMoney,
     BookeoParticipant,
-    BookingOption,
-    Customer,
-    Money,
-    Payment,
-    PaymentMethod,
+    BookeoPayment,
+    BookeoPaymentMethod,
+    BookeoResource,
     PriceAdjustment,
-    Resource,
 )
 
 
@@ -32,17 +32,17 @@ class BookeoBookings(BookeoAPI):
         eventId: Optional[str],
         firstCourseEnrolledEventId: Optional[str],
         dropinCourseEnrolledEventId: Optional[str],
-        startTime: Optional[BookeoDateTime],
-        endTime: Optional[BookeoDateTime],
+        startTime: Optional[datetime],
+        endTime: Optional[datetime],
         customerId: Optional[str],
-        customer: Optional[Customer],
+        customer: Optional[BookeoCustomer],
         externalRef: Optional[str],
-        resources: Optional[list[Resource]],
-        options: Optional[list[BookingOption]],
+        resources: Optional[list[BookeoResource]],
+        options: Optional[list[BookeoBookingOption]],
         privateEvent: Optional[bool],
         priceAdjustments: Optional[list[PriceAdjustment]],
         giftVoucherCodeInput: Optional[str],
-        initialPayments: Optional[list[Payment]],
+        initialPayments: Optional[list[BookeoPayment]],
         source: Optional[str],
     ) -> BookeoBooking | None:
         if None in (productId, participants) or len(participants) == 0:
@@ -51,10 +51,10 @@ class BookeoBookings(BookeoAPI):
 
     def _retrieve_bookings(
         self,
-        startTime: Optional[BookeoDateTime],
-        endTime: Optional[BookeoDateTime],
-        lastUpdatedStartTime: Optional[BookeoDateTime],
-        lastUpdatedEndTime: Optional[BookeoDateTime],
+        startTime: Optional[datetime],
+        endTime: Optional[datetime],
+        lastUpdatedStartTime: Optional[datetime],
+        lastUpdatedEndTime: Optional[datetime],
         productId: Optional[str],
         pageNavigationToken: Optional[str],
         includeCanceled: bool = False,

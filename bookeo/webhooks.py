@@ -24,9 +24,10 @@ class BookeoWebhooks(BookeoAPI):
         resp = self._request("/webhooks")
         if resp.status_code != 200:
             return None
-        info = resp["info"]
-        webhooks = [BookeoWebhook.from_dict(payment) for payment in info["data"]]
-        pager = BookeoPagination.from_dict(info)
+        data = resp.json()
+        webhooks = [BookeoWebhook(**wh) for wh in data["data"]]
+        info = data["info"]
+        pager = BookeoPagination(**info)
         return (webhooks, pager)
 
     def create_webhook(
@@ -49,7 +50,8 @@ class BookeoWebhooks(BookeoAPI):
         resp = self._request(f"/webhooks{id}")
         if resp.status_code != 200:
             return None
-        return BookeoWebhook.from_dict(resp.json())
+        data = resp.json()
+        return BookeoWebhook(**data)
 
     def delete_webhook(self, id) -> bool:
         """Deletes the webhook with the specified id, returning True if successful."""

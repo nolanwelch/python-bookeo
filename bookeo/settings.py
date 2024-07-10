@@ -29,7 +29,8 @@ class BookeoSettings(BookeoAPI):
             resp = self._request("/settings/apikeyinfo")
             if resp.status_code != 200:
                 return None
-            self._api_key_info = BookeoAPIKeyInfo.from_dict(resp.json())
+            data = resp.json()
+            self._api_key_info = BookeoAPIKeyInfo(**data)
         return self._api_key_info
 
     def business_info(self, use_cached=True) -> Optional[BookeoBusinessInfo]:
@@ -37,7 +38,8 @@ class BookeoSettings(BookeoAPI):
             resp = self._request("/settings/business")
             if resp.status_code != 200:
                 return None
-            self._business_info = BookeoBusinessInfo.from_dict(resp.json())
+            data = resp.json()
+            self._business_info = BookeoBusinessInfo(**data)
         return self._business_info
 
     def _fetch_customer_participant_info(self):
@@ -52,7 +54,7 @@ class BookeoSettings(BookeoAPI):
             fields = self._custom_fields.get("choiceFields")
             if fields is None:
                 return []
-            self._choice_fields = [BookeoChoiceField.from_dict(f) for f in fields]
+            self._choice_fields = [BookeoChoiceField(**f) for f in fields]
         return self._choice_fields
 
     def get_number_fields(self, use_cached=True) -> list[BookeoNumberField]:
@@ -61,7 +63,7 @@ class BookeoSettings(BookeoAPI):
             fields = self._custom_fields.get("numberFields")
             if fields is None:
                 return []
-            self._number_fields = [BookeoNumberField.from_dict(f) for f in fields]
+            self._number_fields = [BookeoNumberField(**f) for f in fields]
         return self._number_fields
 
     def get_onoff_fields(self, use_cached=True) -> list[BookeoOnOffField]:
@@ -70,7 +72,7 @@ class BookeoSettings(BookeoAPI):
             fields = self._custom_fields.get("onOffFields")
             if fields is None:
                 return []
-            self._onoff_fields = [BookeoOnOffField.from_dict(f) for f in fields]
+            self._onoff_fields = [BookeoOnOffField(**f) for f in fields]
         return self._onoff_fields
 
     def get_text_fields(self, use_cached=True) -> list[BookeoTextField]:
@@ -79,7 +81,7 @@ class BookeoSettings(BookeoAPI):
             fields = self._custom_fields.get("textFields")
             if fields is None:
                 return []
-            self._text_fields = [BookeoTextField.from_dict(f) for f in fields]
+            self._text_fields = [BookeoTextField(**f) for f in fields]
         return self._text_fields
 
     def get_langs(self, use_cached=True) -> list[BookeoLanguage]:
@@ -87,7 +89,7 @@ class BookeoSettings(BookeoAPI):
             resp = self._request("/settings/languages")
             if resp.status_code != 200:
                 return []
-            self._languages = [BookeoLanguage.from_dict(lang) for lang in resp.json()]
+            self._languages = [BookeoLanguage(**lang) for lang in resp.json()]
         return self._languages
 
     def get_people_categories(self, use_cached=True) -> list[BookeoPeopleCategory]:
@@ -95,9 +97,7 @@ class BookeoSettings(BookeoAPI):
             resp = self._request("/settings/peoplecategories")
             if resp.status_code != 200:
                 return []
-            self._people_categories = [
-                BookeoPeopleCategory.from_dict(c) for c in resp.json()
-            ]
+            self._people_categories = [BookeoPeopleCategory(**c) for c in resp.json()]
         return self._people_categories
 
     def get_products(
@@ -121,8 +121,9 @@ class BookeoSettings(BookeoAPI):
         if resp.status_code != 200:
             return None
         data = resp.json()
-        products = [BookeoProduct.from_dict(p) for p in data["data"]]
-        pager = BookeoPagination.from_dict(data["info"])
+        products = [BookeoProduct(**p) for p in data["data"]]
+        info = data["info"]
+        pager = BookeoPagination(**info)
         return (products, pager)
 
     def get_resources(self) -> Optional[tuple[list[BookeoProduct], BookeoPagination]]:
@@ -130,8 +131,9 @@ class BookeoSettings(BookeoAPI):
         if resp.status_code != 200:
             return None
         data = resp.json()
-        resources = [BookeoResource.from_dict(p) for p in data["data"]]
-        pager = BookeoPagination.from_dict(data["info"])
+        resources = [BookeoResource(**p) for p in data["data"]]
+        info = data["info"]
+        pager = BookeoPagination(**info)
         return (resources, pager)
 
     def get_taxes(self, use_cached=True):
@@ -139,6 +141,7 @@ class BookeoSettings(BookeoAPI):
         if resp.status_code != 200:
             return None
         data = resp.json()
-        taxes = [BookeoTax.from_dict(p) for p in data["data"]]
-        pager = BookeoPagination.from_dict(data["info"])
+        taxes = [BookeoTax(**t) for t in data["data"]]
+        info = data["info"]
+        pager = BookeoPagination(**info)
         return (taxes, pager)

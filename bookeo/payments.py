@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from .core import BookeoAPI, bookeo_timestamp_from_dt
+from .core import BookeoAPI, dt_to_bookeo_timestamp
 from .schemas import BookeoPagination, BookeoPayment, BookeoPaymentMethod
 
 
@@ -22,19 +22,21 @@ class BookeoPayments(BookeoAPI):
             params={
                 "paymentMethod": payment_method,
                 "paymentMethodOther": payment_method_other,
-                "startTime": bookeo_timestamp_from_dt(start_time),
-                "endTime": bookeo_timestamp_from_dt(end_time),
+                "startTime": dt_to_bookeo_timestamp(start_time),
+                "endTime": dt_to_bookeo_timestamp(end_time),
                 "itemsPerPage": items_per_page,
                 "pageNavigationToken": nav_token,
                 "pageNumber": page_number,
             },
         )
-        info = resp["info"]
-        payments = [BookeoPayment.from_dict(payment) for payment in info["data"]]
-        pager = BookeoPagination.from_dict(info)
+        data = resp.json()
+        payments = [BookeoPayment(**payment) for payment in data["data"]]
+        info = data["info"]
+        pager = BookeoPagination(**info)
         return (payments, pager)
 
     def get_payment(self, id: str):
         """Retrieve a specific payment."""
         resp = self._request(f"/payments/{id}")
-        return BookeoPayment.from_dict(resp.json())
+        data = resp.json()
+        return BookeoPayment(**data)

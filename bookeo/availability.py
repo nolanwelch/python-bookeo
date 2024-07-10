@@ -39,8 +39,9 @@ class BookeoAvailability(BookeoAPI):
         if resp.status_code != 200:
             return []
         data = resp.json()
-        blocks = [BookeoProduct.from_dict(p) for p in data["data"]]
-        pager = BookeoPagination.from_dict(data["info"])
+        blocks = [BookeoProduct(**p) for p in data["data"]]
+        info = data["info"]
+        pager = BookeoPagination(**info)
         return (blocks, pager)
 
     def search_open_slots(
@@ -65,18 +66,19 @@ class BookeoAvailability(BookeoAPI):
                 "productId": product_id,
                 "startTime": dt_to_bookeo_timestamp(start_time),
                 "endTime": dt_to_bookeo_timestamp(end_time),
-                "peopleNumbers": [p.to_dict() for p in people_numbers],
-                "options": [o.to_dict() for o in options],
-                "resources": [r.to_dict() for r in resources],
+                "peopleNumbers": [p.model_dump() for p in people_numbers],
+                "options": [o.model_dump() for o in options],
+                "resources": [r.model_dump() for r in resources],
             },
             method="POST",
         )
         if resp.status_code != 201:
             return None
         data = resp.json()
-        slots = [BookeoMatchingSlot.from_dict(s) for s in data["data"]]
+        slots = [BookeoMatchingSlot(**s) for s in data["data"]]
         location = resp.headers.get("Location")
-        pager = BookeoPagination.from_dict(data["info"])
+        info = data["info"]
+        pager = BookeoPagination(**info)
         return (slots, location, pager)
 
     def nav_slot_search(self, nav_token: str, page_number: Optional[str]):
@@ -89,6 +91,7 @@ class BookeoAvailability(BookeoAPI):
         if resp.status_code != 200:
             return None
         data = resp.json()
-        slots = [BookeoMatchingSlot.from_dict(s) for s in data["data"]]
-        pager = BookeoPagination.from_dict(data["info"])
+        slots = [BookeoMatchingSlot(**s) for s in data["data"]]
+        info = data["info"]
+        pager = BookeoPagination(**info)
         return (slots, pager)
