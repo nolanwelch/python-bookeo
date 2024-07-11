@@ -10,12 +10,7 @@ from .core import dt_to_bookeo_timestamp
 
 
 class BookeoEnum(Enum):
-    @classmethod
-    def from_str(cls, label: str):
-        for sub in cls:
-            if sub.value == label:
-                return sub
-        return None
+    pass
 
 
 class BookeoPhoneType(BookeoEnum):
