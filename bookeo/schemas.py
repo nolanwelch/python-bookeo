@@ -337,7 +337,7 @@ class BookeoPagination(BookeoSchema):
     current_page: int
     page_navigation_token: str = None
 
-    @model_validator(mode="before")
+    @model_validator(mode="after")
     def other_payment_method(self) -> Self:
         if self.total_pages > 1:
             assert (
