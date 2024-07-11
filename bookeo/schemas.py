@@ -1,8 +1,20 @@
 from datetime import datetime
 from enum import Enum
 
-from pydantic import BaseModel, ConfigDict, PlainSerializer, alias_generators
-from typing_extensions import Annotated
+import iso3166
+import iso4217
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    HttpUrl,
+    PlainSerializer,
+    alias_generators,
+    model_validator,
+)
+from pydantic.functional_validators import AfterValidator
+from typing_extensions import Annotated, Self
 
 from .core import dt_to_bookeo_timestamp
 
@@ -82,7 +94,7 @@ class BookeoAPIKeyInfo(BookeoSchema):
 
 
 class BookeoImage(BookeoSchema):
-    url: str
+    url: HttpUrl
 
 
 class BookeoPhoneNumber(BookeoSchema):
@@ -90,11 +102,21 @@ class BookeoPhoneNumber(BookeoSchema):
     type: BookeoPhoneType
 
 
+def check_country_code(code: str):
+    assert (
+        iso3166.countries_by_alpha2.get(code) is not None
+    ), f"{code} is not a valid ISO 3166-1 (alpha-2) country code."
+    return code
+
+
+BookeoCountryCode = Annotated[str, AfterValidator(check_country_code)]
+
+
 class BookeoStreetAddress(BookeoSchema):
     address_1: str = None
     address_2: str = None
     city: str = None
-    country_code: str = None
+    country_code: BookeoCountryCode
     state: str = None
     postcode: str = None
 
@@ -105,7 +127,7 @@ class BookeoBusinessInfo(BookeoSchema):
     legal_identifiers: str = None
     phone_numbers: list[BookeoPhoneNumber]
     website_URL: str = None
-    email_address: str = None
+    email_address: EmailStr = None
     street_address: BookeoStreetAddress
     logo: BookeoImage = None
     description: str = None
@@ -127,7 +149,6 @@ class BookeoCustomChoiceValue(BookeoFieldOption):
     pass
 
 
-# TODO:
 class BookeoCustomField(BookeoSchema):
     id: str
     name: str
@@ -135,7 +156,7 @@ class BookeoCustomField(BookeoSchema):
     shown_to_customers: bool
     for_customer: bool
     for_participants: bool
-    index: int
+    index: int = Field(ge=0)
 
 
 class BookeoChoiceField(BookeoCustomField):
@@ -148,7 +169,7 @@ class BookeoChoiceOptionValue(BookeoFieldOption):
 
 
 class BookeoChoiceOption(BookeoFieldOption):
-    index: int
+    index: int = Field(ge=0)
     shown_to_customers: bool
     enabled: bool
     values: list[BookeoChoiceOptionValue]
@@ -162,7 +183,7 @@ class BookeoNumberField(BookeoCustomField):
 
 
 class BookeoNumberOption(BookeoFieldOption):
-    index: int
+    index: int = Field(ge=0)
     shown_to_customers: bool
     enabled: bool
     min_value: int
@@ -175,7 +196,7 @@ class BookeoOnOffField(BookeoCustomField):
 
 
 class BookeoOnOffOption(BookeoFieldOption):
-    index: int
+    index: int = Field(ge=0)
     shown_to_customers: bool
     enabled: bool
     default: bool
@@ -186,7 +207,7 @@ class BookeoTextField(BookeoCustomField):
 
 
 class BookeoTextOption(BookeoCustomField):
-    index: int
+    index: int = Field(ge=0)
     shown_to_customers: bool
     enabled: bool
     required: bool
@@ -205,9 +226,19 @@ class BookeoDuration(BookeoSchema):
     minutes: int
 
 
+def check_currency(currency: str):
+    assert (
+        iso4217.Currency(currency) is not None
+    ), f"{currency} is not a valid ISO 4217 currency code."
+    return currency
+
+
+BookeoCurrency = Annotated[str, AfterValidator(check_currency)]
+
+
 class BookeoMoney(BookeoSchema):
     amount: str
-    currency: str
+    currency: BookeoCurrency
 
 
 class BookeoPayment(BookeoSchema):
@@ -224,6 +255,14 @@ class BookeoPayment(BookeoSchema):
     customer_id: str = None
     gateway_name: str = None
     transaction_id: str = None
+
+    @model_validator(mode="before")
+    def other_payment_method(self) -> Self:
+        if self.payment_method == BookeoPaymentMethod.Other:
+            assert (
+                self.payment_method_other is not None
+            ), "paymentMethodOther cannot be null when paymentMethod is other."
+        return self
 
 
 class BookeoPriceAdjustment(BookeoSchema):
@@ -297,6 +336,14 @@ class BookeoPagination(BookeoSchema):
     total_pages: int
     current_page: int
     page_navigation_token: str = None
+
+    @model_validator(mode="before")
+    def other_payment_method(self) -> Self:
+        if self.total_pages > 1:
+            assert (
+                self.page_navigation_token is not None
+            ), "pageNavigationToken cannot be null when there is more than one page of results."
+        return self
 
 
 class BookeoSubaccount(BookeoSchema):
@@ -377,7 +424,7 @@ class BookeoLinkedPerson(BookeoSchema):
 
 class BookeoPeopleNumber(BookeoSchema):
     people_category_id: str
-    number: int
+    number: int = Field(ge=0)
 
 
 class BookeoCustomer(BookeoSchema):
@@ -406,8 +453,16 @@ class BookeoCustomer(BookeoSchema):
 class BookeoParticipant(BookeoSchema):
     person_id: str
     people_category_id: str
-    category_index: int
+    category_index: int = Field(ge=1)
     person_details: BookeoLinkedPerson = None
+
+    @model_validator(mode="before")
+    def other_payment_method(self) -> Self:
+        if self.person_id not in ["PSELF", "PNEW" "PUNKNOWN"]:
+            assert (
+                self.person_details is not None
+            ), f"personDetails cannot be null when personId is known."
+        return self
 
 
 class BookeoParticipants(BookeoSchema):
