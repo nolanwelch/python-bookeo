@@ -507,7 +507,7 @@ class BookeoBooking(BookeoSchema):
     customer_id: str = None
     customer: BookeoCustomer = None
     title: str
-    external_ref: str = None
+    external_ref: HttpUrl = None
     participants: BookeoParticipants
     resources: list[BookeoResource] = None
     canceled: bool = None
