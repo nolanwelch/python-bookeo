@@ -476,7 +476,7 @@ class BookeoResourceBlock(BookeoSchema):
     end_time: BookeoDatetime
     reason: str = None
     resources: list[BookeoResource]
-    creation_time: datetime
+    creation_time: BookeoDatetime
     creation_agent: str
     last_change_time: BookeoDatetime = None
     last_change_agent: str = None
@@ -489,7 +489,7 @@ class BookeoSeatBlock(BookeoSchema):
     reason: str = None
     num_seats: int
     start_time: BookeoDatetime = None
-    creation_time: datetime
+    creation_time: BookeoDatetime
     creation_agent: str
     last_change_time: BookeoDatetime = None
     last_change_agent: str = None
