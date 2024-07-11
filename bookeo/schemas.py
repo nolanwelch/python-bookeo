@@ -1,7 +1,8 @@
 from datetime import datetime
 from enum import Enum
 
-from pydantic import BaseModel, ConfigDict, alias_generators, field_serializer
+from pydantic import BaseModel, ConfigDict, PlainSerializer, alias_generators
+from typing_extensions import Annotated
 
 from .core import dt_to_bookeo_timestamp
 
@@ -65,20 +66,16 @@ class BookeoWebhookType(BookeoEnum):
 
 # Object schemas
 
+BookeoDatetime = Annotated[
+    datetime, PlainSerializer(dt_to_bookeo_timestamp, return_type=str)
+]
+
 
 class BookeoSchema(BaseModel):
     model_config = ConfigDict(alias_generator=alias_generators.to_camel)
 
     class Config:
         validate_schema: True
-
-
-class BookeoDatetime(BaseModel):
-    dt: datetime
-
-    @field_serializer("dt")
-    def serialize_dt(self, dt: datetime, _info):
-        return dt_to_bookeo_timestamp(dt)
 
 
 class BookeoAPIKeyInfo(BookeoSchema):
