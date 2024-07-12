@@ -3,18 +3,18 @@ from typing import Optional
 
 import requests
 
-from .client import BookeoClient
 from .core import BookeoAPI
 from .schemas import (
     BookeoBooking,
     BookeoBookingOption,
     BookeoCustomer,
     BookeoMoney,
+    BookeoPagination,
     BookeoParticipant,
     BookeoPayment,
     BookeoPaymentMethod,
+    BookeoPriceAdjustment,
     BookeoResource,
-    PriceAdjustment,
 )
 
 
@@ -38,16 +38,53 @@ class BookeoBookings(BookeoAPI):
         customer: Optional[BookeoCustomer],
         externalRef: Optional[str],
         resources: Optional[list[BookeoResource]],
+        sourceIp: Optional[str],
         options: Optional[list[BookeoBookingOption]],
         privateEvent: Optional[bool],
-        priceAdjustments: Optional[list[PriceAdjustment]],
+        priceAdjustments: Optional[list[BookeoPriceAdjustment]],
+        promotionCodeInput: Optional[str],
         giftVoucherCodeInput: Optional[str],
         initialPayments: Optional[list[BookeoPayment]],
         source: Optional[str],
-    ) -> BookeoBooking | None:
-        if None in (productId, participants) or len(participants) == 0:
-            raise Exception()  # TODO: Specify this exception
-        pass
+    ) -> Optional[BookeoBooking]:
+        resp = self._request(
+            "/bookings",
+            params={
+                "previousHoldId": previousHoldId,
+                "notifyUsers": notifyUsers,
+                "notifyCustomer": notifyCustomer,
+                "sendCustomerReminders": sendCustomerReminders,
+                "sendCustomerThankyou": sendCustomerThankyou,
+                "mode": mode,
+            },
+            data={
+                "eventId": eventId,
+                "firstCourseEnrolledEventId": firstCourseEnrolledEventId,
+                "dropinCourseEnrolledEventId": dropinCourseEnrolledEventId,
+                "startTime": startTime,
+                "endTime": endTime,
+                "customerId": customerId,
+                "customer": customer,
+                "externalRef": externalRef,
+                "participants": participants,
+                "resources": resources,
+                "sourceIp": sourceIp,
+                "productId": productId,
+                "options": options,
+                "privateEvent": privateEvent,
+                "priceAdjustments": priceAdjustments,
+                "promotionCodeInput": promotionCodeInput,
+                "giftVoucherCodeInput": giftVoucherCodeInput,
+                "initialPayments": initialPayments,
+                "source": source,
+            },
+            method="POST",
+        )
+        if resp.status_code != 201:
+            return None
+        location = resp.headers.get("Location")
+        data = resp.json()
+        return (location, BookeoBooking(**data))
 
     def _retrieve_bookings(
         self,
@@ -90,35 +127,32 @@ class BookeoBookings(BookeoAPI):
         self,
         bookingNumber: str,
         productId: str,
-        participants: list[Participant],
+        participants: list[BookeoParticipant],
         notifyUsers: Optional[bool],
         notifyCustomer: Optional[bool],
         mode: Optional[str],
         eventId: Optional[str],
         firstCourseEnrolledEventId: Optional[str],
         dropinCourseEnrolledEventId: Optional[str],
-        startTime: Optional[BookeoDateTime],
-        endTime: Optional[BookeoDateTime],
+        startTime: Optional[datetime],
+        endTime: Optional[datetime],
         customerId: Optional[str],
-        customer: Optional[Customer],
+        customer: Optional[BookeoCustomer],
         externalRef: Optional[str],
-        resources: Optional[list[Resource]],
+        resources: Optional[list[BookeoResource]],
         sourceIp: Optional[str],
-        options: Optional[list[BookingOption]],
+        options: Optional[list[BookeoBookingOption]],
         privateEvent: Optional[bool],
-        priceAdjustments: Optional[list[PriceAdjustment]],
+        priceAdjustments: Optional[list[BookeoPriceAdjustment]],
         promotionCodeInput: Optional[str],
         giftVoucherCodeInput: Optional[str],
-        initialPayments: Optional[list[Payment]],
+        initialPayments: Optional[list[BookeoPayment]],
         source: Optional[str],
     ) -> BookeoBooking:
-        if None in (bookingNumber, productId, participants) or len(participants) == 0:
-            raise Exception()  # TODO: Specify exception
-
-        res = requests.put(
-            url=f"https://api.bookeo.com/v2/bookings/{bookingNumber}",
+        resp = self._request(
+            f"/bookings/{bookingNumber}",
             params={},
-            headers=self.__HEADERS,
+            method="PUT",
         )
 
     def cancel_booking(
@@ -131,11 +165,8 @@ class BookeoBookings(BookeoAPI):
         trackInCustomerHistory: Optional[bool],
         cancelRemainingSeries: Optional[bool],
     ) -> bool:
-        if bookingNumber is None:
-            raise Exception()  # TODO: Yeah
-
-        res = requests.delete(
-            url=f"https://api.bookeo.com/v2/bookings/{bookingNumber}",
+        resp = self._request(
+            f"/bookings/{bookingNumber}",
             params={
                 "reason": reason,
                 "notifyUsers": notifyUsers,
@@ -144,17 +175,38 @@ class BookeoBookings(BookeoAPI):
                 "trackInCustomerHistory": trackInCustomerHistory,
                 "cancelRemainingSeries": cancelRemainingSeries,
             },
-            headers=self.__HEADERS,
+            method="DELETE",
         )
+        return resp.status_code == 204
 
     def add_booking_payment(
         self,
-        bookingNumber: str,
-        receivedTime: BookeoDateTime,
+        booking_number: str,
+        received_time: datetime,
         reason: str,
-        amount: Money,
-        paymentMethod: PaymentMethod,
-        paymentMethodOther: str,
-        comment: Optional[str],
-    ) -> Payment | None:
-        pass
+        amount: BookeoMoney,
+        payment_method: BookeoPaymentMethod,
+        payment_method_other: Optional[str],
+    ) -> Optional[BookeoPayment]:
+        resp = self._request(f"/bookings/{booking_number}", data={}, method="POST")
+        if resp.status_code != 201:
+            return None
+
+    def get_received_payments(
+        self, booking_number: str
+    ) -> Optional[tuple[list[BookeoPayment], BookeoPagination]]:
+        resp = self._request(f"/bookings/{booking_number}/payments")
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+        payments = [BookeoPayment(**s) for s in data["data"]]
+        info = data["info"]
+        pager = BookeoPagination(**info)
+        return (payments, pager)
+
+    def get_customer(self, booking_number: str) -> Optional[BookeoCustomer]:
+        resp = self._request(f"/bookings/{booking_number}/customer")
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+        return BookeoCustomer(**data)
