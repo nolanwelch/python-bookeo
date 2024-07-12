@@ -44,14 +44,14 @@ class BookeoAPI:
         return r.request()
 
 
-def bookeo_timestamp_to_dt(timestamp: str) -> Optional[datetime]:
+def bookeo_timestamp_to_dt(timestamp: Optional[str]) -> Optional[datetime]:
     if timestamp is None:
         return None
     dt = datetime.strptime(timestamp, r"%Y-%m-%dT%H:%M:%SZ")
     return pytz.utc.localize(dt)
 
 
-def dt_to_bookeo_timestamp(dt: datetime) -> Optional[str]:
+def dt_to_bookeo_timestamp(dt: Optional[datetime]) -> Optional[str]:
     if dt is None:
         return None
     utc_dt = dt.astimezone(pytz.utc)
