@@ -1,22 +1,23 @@
 from datetime import datetime
-from typing import Optional
 
 from .core import BookeoAPI, dt_to_bookeo_timestamp
+from .request import BookeoRequestException
 from .schemas import BookeoPagination, BookeoResource, BookeoResourceBlock
 
 
 class BookeoResourceBlocks(BookeoAPI):
+
     def get_resource_blocks(
         self,
-        start_time: Optional[datetime],
-        end_time: Optional[datetime],
-        last_updated_start_time: Optional[datetime],
-        last_updated_end_time: Optional[datetime],
-        resource_id: Optional[str],
-        items_per_page: Optional[int],
-        nav_token: Optional[str],
-        page_number: Optional[int],
-    ) -> Optional[tuple[list[BookeoResourceBlock], BookeoPagination]]:
+        start_time: datetime = None,
+        end_time: datetime = None,
+        last_updated_start_time: datetime = None,
+        last_updated_end_time: datetime = None,
+        resource_id: str = None,
+        items_per_page: int = None,
+        nav_token: str = None,
+        page_number: int = None,
+    ) -> tuple[list[BookeoResourceBlock], BookeoPagination]:
         resp = self._request(
             "/resourceblocks",
             params={
@@ -31,7 +32,9 @@ class BookeoResourceBlocks(BookeoAPI):
             },
         )
         if resp.status_code != 200:
-            return None
+            raise BookeoRequestException(
+                f"Could not get requested resource blocks.", resp.request.url
+            )
         data = resp.json()
         blocks = [BookeoResourceBlock(**rb) for rb in data["data"]]
         info = data["info"]
@@ -42,10 +45,16 @@ class BookeoResourceBlocks(BookeoAPI):
         self,
         start_time: datetime,
         end_time: datetime,
-        reason: Optional[str],
         resources: list[BookeoResource],
-    ) -> Optional[tuple[str, BookeoResourceBlock]]:
+        reason: str = None,
+    ) -> tuple[str, BookeoResourceBlock]:
         """Creates a new resource block."""
+        if start_time is None:
+            raise TypeError("start_time cannot be None.")
+        if end_time is None:
+            raise TypeError("end_time cannot be None.")
+        if resources is None:
+            raise TypeError("resources cannot be None.")
         resp = self._request(
             "/resourceblocks",
             data={
@@ -57,16 +66,22 @@ class BookeoResourceBlocks(BookeoAPI):
             method="POST",
         )
         if resp.status_code != 201:
-            return None
-        location = resp.headers.get("Location")
+            raise BookeoRequestException(
+                "Could not create requested resource block.", resp.request.url
+            )
+        location = resp.headers["Location"]
         data = resp.json()
         return (location, BookeoResourceBlock(**data))
 
-    def get_resource_block(self, id: str) -> Optional[BookeoResourceBlock]:
+    def get_resource_block(self, id: str) -> BookeoResourceBlock:
         """Retrieves a resource block by its id."""
+        if id is None:
+            raise TypeError("id cannot be None.")
         resp = self._request(f"/resourceblocks/{id}")
         if resp.status_code != 200:
-            return None
+            raise BookeoRequestException(
+                f"Could not get resource block with id {id}.", resp.request.url
+            )
         data = resp.json()
         return BookeoResourceBlock(**data)
 
@@ -75,10 +90,16 @@ class BookeoResourceBlocks(BookeoAPI):
         id: str,
         start_time: datetime,
         end_time: datetime,
-        reason: Optional[str],
         resources: list[BookeoResource],
-    ) -> bool:
-        """Updates an existing resource block, returning True if successful."""
+        reason: str = None,
+    ) -> None:
+        if start_time is None:
+            raise TypeError("start_time cannot be None.")
+        if end_time is None:
+            raise TypeError("end_time cannot be None.")
+        if resources is None:
+            raise TypeError("resources cannot be None.")
+        """Updates an existing resource block."""
         resp = self._request(
             f"/resourceblocks/{id}",
             data={
@@ -89,9 +110,19 @@ class BookeoResourceBlocks(BookeoAPI):
             },
             method="PUT",
         )
-        return resp.status_code == 200
+        if resp.status_code != 200:
+            raise BookeoRequestException(
+                f"Could not update resource block with id {id}.", resp.request.url
+            )
+        return
 
-    def delete_resource_block(self, id: str) -> bool:
-        """Deletes an existing resource block, returning True if successful."""
+    def delete_resource_block(self, id: str) -> None:
+        """Deletes an existing resource block."""
+        if id is None:
+            raise TypeError("id cannot be None.")
         resp = self._request(f"/resourceblocks/{id}", method="DELETE")
-        return resp.status_code == 204
+        if resp.status_code != 204:
+            raise BookeoRequestException(
+                f"Could not delete resource block with id {id}", resp.request.url
+            )
+        return

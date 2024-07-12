@@ -1,5 +1,3 @@
-from typing import Optional
-
 from .core import BookeoAPI
 from .request import BookeoRequestException
 from .schemas import (
@@ -10,20 +8,13 @@ from .schemas import (
 )
 
 
-class BookeoWebhookException(BookeoRequestException):
-    def __init__(self, error_msg):
-        self.error_msg = error_msg
-
-    def __str__(self):
-        return self.error_msg
-
-
 class BookeoWebhooks(BookeoAPI):
-    def get_webhooks(self) -> Optional[tuple[str, BookeoWebhook]]:
+
+    def get_webhooks(self) -> tuple[list[BookeoWebhook], BookeoPagination]:
         """Retrieves and returns all webhooks for this API key."""
         resp = self._request("/webhooks")
         if resp.status_code != 200:
-            return None
+            raise BookeoRequestException("Could not get webhooks.", resp.request.url)
         data = resp.json()
         webhooks = [BookeoWebhook(**wh) for wh in data["data"]]
         info = data["info"]
@@ -32,8 +23,14 @@ class BookeoWebhooks(BookeoAPI):
 
     def create_webhook(
         self, url: str, domain: BookeoWebhookDomain, webhook_type: BookeoWebhookType
-    ) -> Optional[str]:
-        """Creates a new webhook, returning the resource URI if successful."""
+    ) -> str:
+        """Creates a new webhook, returning the resource URI."""
+        if url is None:
+            raise TypeError("url cannot be None.")
+        if domain is None:
+            raise TypeError("domain cannot be None.")
+        if webhook_type is None:
+            raise TypeError("webhook_type cannot be None.")
         resp = self._request(
             "/webhooks",
             data={
@@ -43,17 +40,31 @@ class BookeoWebhooks(BookeoAPI):
             },
             method="POST",
         )
-        return resp.headers.get("Location")
+        if resp.status_code != 200:
+            raise BookeoRequestException(
+                "Could not create specified webhook.", resp.request.url
+            )
+        return resp.headers["Location"]
 
-    def get_webhook(self, id: str) -> Optional[BookeoWebhook]:
-        """Retrieves the webhook with the specified id. Returns a BookeoWebhook if successful."""
+    def get_webhook(self, id: str) -> BookeoWebhook:
+        """Retrieves the webhook with the specified id.."""
+        if id is None:
+            raise TypeError("id cannot be None.")
         resp = self._request(f"/webhooks{id}")
         if resp.status_code != 200:
-            return None
+            raise BookeoRequestException(
+                f"Could not get webhook with id {id}.", resp.request.url
+            )
         data = resp.json()
         return BookeoWebhook(**data)
 
-    def delete_webhook(self, id) -> bool:
-        """Deletes the webhook with the specified id, returning True if successful."""
+    def delete_webhook(self, id: str) -> None:
+        """Deletes the webhook with the specified id."""
+        if id is None:
+            raise TypeError("id cannot be None.")
         resp = self._request(f"/webhooks/{id}", method="DELETE")
-        return resp.status_code == 204
+        if resp.status_code != 204:
+            raise BookeoRequestException(
+                f"Could not delete webhook with id {id}.", resp.request.url
+            )
+        return

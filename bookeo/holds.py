@@ -1,45 +1,50 @@
 from datetime import datetime
-from typing import Optional
 
-from .core import BookeoAPI, bookeo_timestamp_to_dt, dt_to_bookeo_timestamp
+from .core import BookeoAPI, dt_to_bookeo_timestamp
 from .schemas import (
     BookeoBookingOption,
     BookeoCustomer,
     BookeoHold,
-    BookeoMoney,
     BookeoParticipants,
     BookeoPayment,
-    BookeoPrice,
     BookeoPriceAdjustment,
     BookeoResource,
 )
+from .request import BookeoRequestException
 
 
 class BookeoHolds(BookeoAPI):
+
     def create_hold(
         self,
         product_id: str,
         resources: list[BookeoResource],
         participants: BookeoParticipants,
-        hold_duration_secs: Optional[int],
-        previous_hold_id: Optional[str],
-        event_id: Optional[str],
-        first_course_enrolled_event_id: Optional[str],
-        dropin_course_enrolled_event_id: Optional[str],
-        start_time: Optional[datetime],
-        end_time: Optional[datetime],
-        customer_id: Optional[str],
-        customer: Optional[BookeoCustomer],
-        external_ref: Optional[str],
-        source_ip: Optional[str],
-        options: Optional[list[BookeoBookingOption]],
-        private_event: Optional[bool],
-        price_adjustments: Optional[list[BookeoPriceAdjustment]],
-        promotion_codes: Optional[list[str]],
-        gift_voucher_codes: Optional[list[str]],
-        initial_payments: Optional[list[BookeoPayment]],
-        source: Optional[str],
-    ) -> tuple[Optional[str], Optional[BookeoHold]]:
+        hold_duration_secs: int = None,
+        previous_hold_id: str = None,
+        event_id: str = None,
+        first_course_enrolled_event_id: str = None,
+        dropin_course_enrolled_event_id: str = None,
+        start_time: datetime = None,
+        end_time: datetime = None,
+        customer_id: str = None,
+        customer: BookeoCustomer = None,
+        external_ref: str = None,
+        source_ip: str = None,
+        private_event: bool = None,
+        source: str = None,
+        initial_payments: list[BookeoPayment] = [],
+        gift_voucher_codes: list[str] = [],
+        promotion_codes: list[str] = [],
+        options: list[BookeoBookingOption] = [],
+        price_adjustments: list[BookeoPriceAdjustment] = [],
+    ) -> tuple[str, BookeoHold]:
+        if product_id is None:
+            raise TypeError("product_id cannot be None.")
+        if resources is None:
+            raise TypeError("resources cannot be None.")
+        if participants is None:
+            raise TypeError("participants cannot be None.")
         resp = self._request(
             "/holds",
             params={
@@ -69,19 +74,33 @@ class BookeoHolds(BookeoAPI):
             },
             method="POST",
         )
-        location = resp.headers.get("Location")
+        if resp.status_code != 201:
+            raise BookeoRequestException(
+                "Could not create specified hold.", resp.request.url
+            )
+        location = resp.headers["Location"]
         data = resp.json()
         return (location, BookeoHold(**data))
 
-    def get_hold(self, id: str) -> Optional[BookeoHold]:
+    def get_hold(self, id: str) -> BookeoHold:
         """Retrieves a previously-generated hold by its id."""
+        if id is None:
+            raise TypeError("id cannot be None.")
         resp = self._request(f"/holds/{id}")
         data = resp.json()
-        if resp.status_code != 200 or not isinstance(data, dict):
-            return None
+        if resp.status_code != 200:
+            raise BookeoRequestException(
+                f"Could not get hold with id {id}.", resp.request.url
+            )
         return BookeoHold(**data)
 
-    def delete_hold(self, id: str) -> bool:
-        """Delete a temporary hold previously created. Returns True iff successful."""
+    def delete_hold(self, id: str) -> None:
+        """Delete a temporary hold previously created.."""
+        if id is None:
+            raise TypeError("id cannot be None.")
         resp = self._request(f"/holds/{id}", method="DELETE")
-        return resp.status_code == 204
+        if resp.status_code != 204:
+            raise BookeoRequestException(
+                f"Could not delete hold with id {id}.", resp.request.url
+            )
+        return

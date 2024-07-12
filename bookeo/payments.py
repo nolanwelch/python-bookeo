@@ -1,21 +1,22 @@
 from datetime import datetime
-from typing import Optional
 
 from .core import BookeoAPI, dt_to_bookeo_timestamp
+from .request import BookeoRequestException
 from .schemas import BookeoPagination, BookeoPayment, BookeoPaymentMethod
 
 
 class BookeoPayments(BookeoAPI):
+
     def get_payments_received(
         self,
-        payment_method: Optional[BookeoPaymentMethod],
-        payment_method_other: Optional[str],
-        start_time: Optional[datetime],
-        end_time: Optional[datetime],
-        items_per_page: Optional[int],
-        nav_token: Optional[str],
-        page_number: Optional[int],
-    ) -> tuple[list[BookeoPayment], Optional[BookeoPagination]]:
+        payment_method: BookeoPaymentMethod = None,
+        payment_method_other: str = None,
+        start_time: datetime = None,
+        end_time: datetime = None,
+        items_per_page: int = None,
+        nav_token: str = None,
+        page_number: int = None,
+    ) -> tuple[list[BookeoPayment], BookeoPagination]:
         """Get a list of payments received."""
         resp = self._request(
             "/payments",
@@ -29,6 +30,10 @@ class BookeoPayments(BookeoAPI):
                 "pageNumber": page_number,
             },
         )
+        if resp.status_code != 200:
+            raise BookeoRequestException(
+                "Could not get payments received.", resp.request.url
+            )
         data = resp.json()
         payments = [BookeoPayment(**payment) for payment in data["data"]]
         info = data["info"]
@@ -37,6 +42,12 @@ class BookeoPayments(BookeoAPI):
 
     def get_payment(self, id: str):
         """Retrieve a specific payment."""
+        if id is None:
+            raise TypeError("id cannot be None.")
         resp = self._request(f"/payments/{id}")
+        if resp.status_code != 200:
+            raise BookeoRequestException(
+                f"Could not get payment with id {id}.", resp.request.url
+            )
         data = resp.json()
         return BookeoPayment(**data)
