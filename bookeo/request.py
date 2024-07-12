@@ -8,6 +8,8 @@ from .client import BookeoClient
 
 
 class BookeoRequestException(Exception):
+    """Class for errors relating to Bookeo API calls."""
+
     def __init__(self, error_msg: str = "", url: str = None):
         self.error_msg = error_msg
         self.url = url
@@ -39,7 +41,7 @@ class BookeoRequest:
         self.path = path
         self.method = method.upper()
         if self.method not in self._HTTP_METHODS:
-            raise BookeoRequestException(f"{self.method} is not a valid HTTP method")
+            raise ValueError(f"{self.method} is not a valid HTTP method.")
 
     def request(self) -> requests.Response:
         url = urljoin(self.host, self.path)
