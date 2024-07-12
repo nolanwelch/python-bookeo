@@ -71,6 +71,13 @@ class BookeoWebhookType(BookeoEnum):
     Deleted = "deleted"
 
 
+class BookeoCustomerSearchField(BookeoEnum):
+    Name = "name"
+    FirstName = "firstName"
+    LastName = "lastName"
+    Email = "emailAddress"
+
+
 # Object schemas
 
 BookeoDatetime = Annotated[
