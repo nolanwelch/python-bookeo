@@ -464,7 +464,7 @@ class BookeoParticipant(BookeoSchema):
     person_details: BookeoLinkedPerson = None
 
     @model_validator(mode="before")
-    def other_payment_method(self) -> Self:
+    def verify_person_details(self) -> Self:
         if self.person_id not in ["PSELF", "PNEW" "PUNKNOWN"]:
             assert (
                 self.person_details is not None
