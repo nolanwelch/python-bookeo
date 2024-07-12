@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Optional
 
 from .core import BookeoAPI, dt_to_bookeo_timestamp
+from .request import BookeoRequestException
 from .schemas import (
     BookeoBookingOption,
     BookeoMatchingSlot,
@@ -13,16 +13,17 @@ from .schemas import (
 
 
 class BookeoAvailability(BookeoAPI):
+
     def product_availability_info(
         self,
-        product_id: Optional[str],
-        start_time: Optional[datetime],
-        end_time: Optional[datetime],
-        items_per_page: Optional[int],
-        nav_token: Optional[str],
-        page_number: Optional[int],
-        mode: Optional[str],
-    ) -> Optional[tuple[list[BookeoProduct], BookeoPagination]]:
+        product_id: str = None,
+        start_time: datetime = None,
+        end_time: datetime = None,
+        items_per_page: int = None,
+        nav_token: str = None,
+        page_number: int = None,
+        mode: str = None,
+    ) -> tuple[list[BookeoProduct], BookeoPagination]:
         """Performs a basic search to find available slots and number of seats in each."""
         resp = self._request(
             "/availability/slots",
@@ -37,7 +38,9 @@ class BookeoAvailability(BookeoAPI):
             },
         )
         if resp.status_code != 200:
-            return []
+            raise BookeoRequestException(
+                f"Could not get product availability information.", resp.request.url
+            )
         data = resp.json()
         blocks = [BookeoProduct(**p) for p in data["data"]]
         info = data["info"]
@@ -46,16 +49,22 @@ class BookeoAvailability(BookeoAPI):
 
     def search_open_slots(
         self,
-        items_per_page: Optional[int],
-        mode: Optional[str],
         product_id: str,
         start_time: datetime,
         end_time: datetime,
         people_numbers: list[BookeoPeopleNumber],
-        options: Optional[list[BookeoBookingOption]],
-        resources: Optional[list[BookeoResource]],
-    ) -> Optional[tuple[list[BookeoMatchingSlot], str, BookeoPagination]]:
+        items_per_page: int = None,
+        mode: str = None,
+        options: list[BookeoBookingOption] = [],
+        resources: list[BookeoResource] = [],
+    ) -> tuple[list[BookeoMatchingSlot], str, BookeoPagination]:
         """Creates a search for available slots that match the given search parameters."""
+        if product_id is None:
+            raise TypeError("product_id cannot be None.")
+        if start_time is None:
+            raise TypeError("start_time cannot be None.")
+        if end_time is None:
+            raise TypeError("end_time cannot be None.")
         resp = self._request(
             "/availability/matchingslots",
             params={
@@ -73,15 +82,20 @@ class BookeoAvailability(BookeoAPI):
             method="POST",
         )
         if resp.status_code != 201:
-            return None
+            raise BookeoRequestException(
+                "Could not create the specified search for product availability information.",
+                resp.request.url,
+            )
         data = resp.json()
         slots = [BookeoMatchingSlot(**s) for s in data["data"]]
-        location = resp.headers.get("Location")
+        location = resp.headers["Location"]
         info = data["info"]
         pager = BookeoPagination(**info)
         return (slots, location, pager)
 
-    def nav_slot_search(self, nav_token: str, page_number: Optional[str]):
+    def nav_slot_search(self, nav_token: str, page_number: str = None):
+        if nav_token is None:
+            raise TypeError("nav_token cannot be None.")
         resp = self._request(
             f"/availability/matchingslots/{nav_token}",
             params={
@@ -89,7 +103,10 @@ class BookeoAvailability(BookeoAPI):
             },
         )
         if resp.status_code != 200:
-            return None
+            raise BookeoRequestException(
+                "Could not navigate specified search for product availability information.",
+                resp.request.url,
+            )
         data = resp.json()
         slots = [BookeoMatchingSlot(**s) for s in data["data"]]
         info = data["info"]
