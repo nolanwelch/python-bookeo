@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from .core import BookeoAPI, dt_to_bookeo_timestamp
 from .request import BookeoRequestException
