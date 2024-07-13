@@ -1,5 +1,4 @@
-from .core import BookeoAPI
-from .request import BookeoRequestException
+from .client import BookeoClient, BookeoRequestException
 from .schemas import (
     BookeoPagination,
     BookeoWebhook,
@@ -8,7 +7,7 @@ from .schemas import (
 )
 
 
-class BookeoWebhooks(BookeoAPI):
+class BookeoWebhooks(BookeoClient):
 
     def get_webhooks(self) -> tuple[list[BookeoWebhook], BookeoPagination]:
         """Retrieves and returns all webhooks for this API key."""

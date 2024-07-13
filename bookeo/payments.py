@@ -1,11 +1,10 @@
 from datetime import datetime
 
-from .core import BookeoAPI, dt_to_bookeo_timestamp
-from .request import BookeoRequestException
+from .client import BookeoClient, BookeoRequestException, dt_to_bookeo_timestamp
 from .schemas import BookeoPagination, BookeoPayment, BookeoPaymentMethod
 
 
-class BookeoPayments(BookeoAPI):
+class BookeoPayments(BookeoClient):
 
     def get_payments_received(
         self,

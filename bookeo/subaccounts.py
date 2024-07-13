@@ -1,9 +1,8 @@
-from .core import BookeoAPI
-from .request import BookeoRequestException
+from .client import BookeoClient, BookeoRequestException
 from .schemas import BookeoPagination, BookeoSubaccount
 
 
-class BookeoSubaccounts(BookeoAPI):
+class BookeoSubaccounts(BookeoClient):
 
     def get_subaccounts(
         self,

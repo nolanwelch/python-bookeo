@@ -1,8 +1,7 @@
 import urllib.parse
 from datetime import datetime
 
-from .core import BookeoAPI, dt_to_bookeo_timestamp
-from .request import BookeoRequestException
+from .client import BookeoClient, BookeoRequestException, dt_to_bookeo_timestamp
 from .schemas import (
     BookeoBooking,
     BookeoCustomer,
@@ -16,7 +15,7 @@ from .schemas import (
 )
 
 
-class BookeoCustomers(BookeoAPI):
+class BookeoCustomers(BookeoClient):
 
     def get_customers(
         self,

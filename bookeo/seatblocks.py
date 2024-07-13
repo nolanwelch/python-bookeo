@@ -1,11 +1,10 @@
 from datetime import datetime
 
-from .core import BookeoAPI, dt_to_bookeo_timestamp
-from .request import BookeoRequestException
+from .client import BookeoClient, BookeoRequestException, dt_to_bookeo_timestamp
 from .schemas import BookeoPagination, BookeoSeatBlock
 
 
-class BookeoSeatblocks(BookeoAPI):
+class BookeoSeatblocks(BookeoClient):
 
     def get_seat_blocks(
         self,

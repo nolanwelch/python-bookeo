@@ -16,7 +16,7 @@ from pydantic import (
 from pydantic.functional_validators import AfterValidator
 from typing_extensions import Annotated, Self
 
-from .core import dt_to_bookeo_timestamp
+from .client import dt_to_bookeo_timestamp
 
 # Bookeo enumerable types
 

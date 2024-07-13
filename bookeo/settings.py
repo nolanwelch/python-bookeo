@@ -1,5 +1,4 @@
-from .core import BookeoAPI
-from .request import BookeoRequestException
+from .client import BookeoClient, BookeoRequestException
 from .schemas import (
     BookeoAPIKeyInfo,
     BookeoBusinessInfo,
@@ -17,7 +16,7 @@ from .schemas import (
 )
 
 
-class BookeoSettings(BookeoAPI):
+class BookeoSettings(BookeoClient):
 
     def api_key_info(self, use_cached=True) -> BookeoAPIKeyInfo:
         if not use_cached or self._api_key_info is None:

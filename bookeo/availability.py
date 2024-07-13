@@ -1,7 +1,6 @@
 from datetime import datetime
 
-from .core import BookeoAPI, dt_to_bookeo_timestamp
-from .request import BookeoRequestException
+from .client import BookeoClient, BookeoRequestException, dt_to_bookeo_timestamp
 from .schemas import (
     BookeoBookingOption,
     BookeoMatchingSlot,
@@ -12,7 +11,7 @@ from .schemas import (
 )
 
 
-class BookeoAvailability(BookeoAPI):
+class BookeoAvailability(BookeoClient):
 
     def product_availability_info(
         self,

@@ -4,7 +4,6 @@ from urllib.parse import urljoin
 
 import requests
 
-from .client import BookeoClient
 
 
 class BookeoRequestException(Exception):
@@ -27,11 +26,8 @@ class BookeoRequest:
         self,
         client: BookeoClient,
         path: str,
-        params: dict,
-        data: Union[dict, str],
         method: str = "GET",
     ):
-        self.params = params
         self.params.update(client.query_dict())
         self.data = data
         if self.data is str:
@@ -67,8 +63,6 @@ class BookeoRequest:
 class BookeoRequestPager:
     """Pages the requested Bookeo API method and returns the JSON data of each response."""
 
-    def __init__(self, request: BookeoRequest, items_per_page: Optional[int]):
-        if "pageNavigationToken" in request.params:
             raise BookeoRequestException("Paged URL cannot include navigation token")
         self._request = request
         self._items_per_page = items_per_page
